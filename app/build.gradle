@@ -1,12 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 10
+    compileSdkVersion 22
     buildToolsVersion "22.0.1"
 
     defaultConfig {
-        applicationId "com.foxdogstudios.peepers"
-        minSdkVersion 10
+        applicationId "com.bwarg.slave"
+        minSdkVersion 16
         targetSdkVersion 22
     }
 

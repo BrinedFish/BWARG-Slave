@@ -21,6 +21,7 @@
     android:layout_height="match_parent"
     android:background="#0099cc"
     >
+
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -35,5 +36,16 @@
             android:layout_gravity="bottom|top"
             android:background="@android:color/black" />
     </RelativeLayout>
+
+    <ImageButton
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:layout_alignParentRight="true"
+        android:id="@+id/imageButton"
+        android:onClick="openSettings"
+        android:src="@drawable/settings"
+        android:layout_gravity="center_horizontal"
+        android:scaleType="centerCrop"
+        android:background="@null" />
 </FrameLayout>
 

@@ -15,19 +15,22 @@
 
 package com.bwarg.slave;
 
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.InterfaceAddress;
 import java.net.NetworkInterface;
+import java.net.UnknownHostException;
 import java.util.Enumeration;
 
 import android.app.Activity;
+import android.bluetooth.BluetoothAdapter;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.pm.PackageManager;
+import android.net.nsd.NsdManager;
+import android.net.nsd.NsdServiceInfo;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.PowerManager;
@@ -38,6 +41,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import android.widget.TextView;
 
 import org.apache.http.conn.util.InetAddressUtils;
@@ -55,6 +59,7 @@ public final class StreamCameraActivity extends Activity
     private static final boolean PREF_FLASH_LIGHT_DEF = false;
     private static final String PREF_PORT = "port";
     private static final int PREF_PORT_DEF = 8080;
+    private static final int DISCOVER_PORT_DEF = 8888;
     private static final String PREF_JPEG_SIZE = "size";
     private static final String PREF_JPEG_QUALITY = "jpeg_quality";
     private static final int PREF_JPEG_QUALITY_DEF = 40;
@@ -69,7 +74,7 @@ public final class StreamCameraActivity extends Activity
     private String mIpAddress = "";
     private int mCameraIndex = PREF_CAMERA_INDEX_DEF;
     private boolean mUseFlashLight = PREF_FLASH_LIGHT_DEF;
-    private int mPort = PREF_PORT_DEF;
+    public static int mPort = PREF_PORT_DEF;
     private int mJpegQuality = PREF_JPEG_QUALITY_DEF;
     private int mPrevieSizeIndex = PREF_PREVIEW_SIZE_INDEX_DEF;
     private TextView mIpAddressView = null;
@@ -77,6 +82,11 @@ public final class StreamCameraActivity extends Activity
     private SharedPreferences mPrefs = null;
     private MenuItem mSettingsMenuItem = null;
     private WakeLock mWakeLock = null;
+
+    private String SERVICE_NAME = "BWARG Slave";
+    private String SERVICE_TYPE = "_http._tcp.";
+    private NsdManager mNsdManager;
+    private NsdManager.RegistrationListener mRegistrationListener;
 
     public StreamCameraActivity()
     {
@@ -91,6 +101,12 @@ public final class StreamCameraActivity extends Activity
 
         new LoadPreferencesTask().execute();
 
+        BluetoothAdapter myDevice = BluetoothAdapter.getDefaultAdapter();
+        String deviceName = myDevice.getName();
+
+        new BwargServer(deviceName).execute(this);
+
+
         mPreviewDisplay = ((SurfaceView) findViewById(R.id.camera)).getHolder();
         mPreviewDisplay.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
         mPreviewDisplay.addCallback(this);
@@ -103,56 +119,9 @@ public final class StreamCameraActivity extends Activity
                 (PowerManager) getSystemService(POWER_SERVICE);
         mWakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 WAKE_LOCK_TAG);
-        //Added by n0xew
-        // Find the server using UDP broadcast
-        try {
-            //Open a random port to send the package
-            DatagramSocket c = new DatagramSocket();
-            c.setBroadcast(true);
+        mNsdManager = (NsdManager) getSystemService(Context.NSD_SERVICE);
+        registerService(DISCOVER_PORT_DEF);
 
-            byte[] sendData = "DISCOVER_FUIFSERVER_REQUEST".getBytes();
-
-            //Try the 255.255.255.255 first
-            try {
-                DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, InetAddress.getByName("255.255.255.255"), 55056);
-                c.send(sendPacket);
-                System.out.println(getClass().getName() + ">>> Request packet sent to: 255.255.255.255 (DEFAULT)");
-            } catch (Exception e) {
-            }
-
-            // Broadcast the message over all the network interfaces
-            Enumeration interfaces = NetworkInterface.getNetworkInterfaces();
-            while (interfaces.hasMoreElements()) {
-                NetworkInterface networkInterface = (NetworkInterface)interfaces.nextElement();
-
-                if (networkInterface.isLoopback() || !networkInterface.isUp()) {
-                    continue; // Don't want to broadcast to the loopback interface
-                }
-
-                for (InterfaceAddress interfaceAddress : networkInterface.getInterfaceAddresses()) {
-                    InetAddress broadcast = interfaceAddress.getBroadcast();
-                    if (broadcast == null) {
-                        continue;
-                    }
-
-                    // Send the broadcast package!
-                    try {
-                        DatagramPacket sendPacket = new DatagramPacket(sendData, sendData.length, broadcast, 55056);
-                        c.send(sendPacket);
-                    } catch (Exception e) {
-                    }
-
-                    System.out.println(getClass().getName() + ">>> Request packet sent to: " + broadcast.getHostAddress() + "; Interface: " + networkInterface.getDisplayName());
-                }
-            }
-
-            System.out.println(getClass().getName() + ">>> Done looping over all network interfaces. Now waiting for a reply!");
-
-            //Close the port!
-            c.close();
-        } catch (IOException ex) {
-            Log.d("NetworkErroe",ex.toString());
-        }
     } // onCreate(Bundle)
 
     @Override
@@ -168,6 +137,9 @@ public final class StreamCameraActivity extends Activity
         updatePrefCacheAndUi();
         tryStartCameraStreamer();
         mWakeLock.acquire();
+        if (mNsdManager != null) {
+            registerService(DISCOVER_PORT_DEF);
+        }
     } // onResume()
 
     @Override
@@ -182,6 +154,10 @@ public final class StreamCameraActivity extends Activity
                     mSharedPreferenceListener);
         } // if
         ensureCameraStreamerStopped();
+        if (mNsdManager != null) {
+            mNsdManager.unregisterService(mRegistrationListener);
+        }
+        super.onPause();
     } // onPause()
 
     @Override
@@ -244,6 +220,9 @@ public final class StreamCameraActivity extends Activity
         return true;
     } // onOptionsItemSelected(MenuItem)
 
+    public void openSettings(View v){
+        startActivity(new Intent(this, PeepersPreferenceActivity.class));
+    }
     private final class LoadPreferencesTask
             extends AsyncTask<Void, Void, SharedPreferences>
     {
@@ -386,5 +365,77 @@ public final class StreamCameraActivity extends Activity
         return null;
     } // tryGetIpV4Address()
 
+
+
+
+    @Override
+    protected void onDestroy() {
+        if (mNsdManager != null) {
+            mNsdManager.unregisterService(mRegistrationListener);
+        }
+        super.onDestroy();
+    }
+
+    public void registerService(int port) {
+        NsdServiceInfo serviceInfo = new NsdServiceInfo();
+        serviceInfo.setServiceName(SERVICE_NAME);
+        serviceInfo.setServiceType(SERVICE_TYPE);
+        serviceInfo.setPort(mPort);
+        try {
+            serviceInfo.setHost(InetAddress.getByName(getIP()));
+        } catch (UnknownHostException e) {
+            e.printStackTrace();
+        }
+
+        mRegistrationListener = new NsdManager.RegistrationListener() {
+
+            @Override
+            public void onServiceRegistered(NsdServiceInfo NsdServiceInfo) {
+                String mServiceName = NsdServiceInfo.getServiceName();
+                SERVICE_NAME = mServiceName;
+                Log.d(TAG, "Registered name : " + mServiceName);
+            }
+
+            @Override
+            public void onRegistrationFailed(NsdServiceInfo serviceInfo,
+                                             int errorCode) {
+                // Registration failed! Put debugging code here to determine
+                // why.
+            }
+
+            @Override
+            public void onServiceUnregistered(NsdServiceInfo serviceInfo) {
+                // Service has been unregistered. This only happens when you
+                // call
+                // NsdManager.unregisterService() and pass in this listener.
+                Log.d(TAG,
+                        "Service Unregistered : " + serviceInfo.getServiceName());
+            }
+
+            @Override
+            public void onUnregistrationFailed(NsdServiceInfo serviceInfo,
+                                               int errorCode) {
+                // Unregistration failed. Put debugging code here to determine
+                // why.
+            }
+        };
+        mNsdManager.registerService(serviceInfo,
+                NsdManager.PROTOCOL_DNS_SD,
+                mRegistrationListener);
+    }
+
+    public String getIP(){
+        WifiManager wifiManager = (WifiManager) getSystemService(WIFI_SERVICE);
+        WifiInfo wifiInfo = wifiManager.getConnectionInfo();
+        int ipAddress = wifiInfo.getIpAddress();
+
+
+        return String.format("%d.%d.%d.%d",
+                (ipAddress & 0xff),
+                (ipAddress >> 8 & 0xff),
+                (ipAddress >> 16 & 0xff),
+                (ipAddress >> 24 & 0xff));
+
+    }
 } // class StreamCameraActivity
 
