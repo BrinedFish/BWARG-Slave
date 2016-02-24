@@ -28,14 +28,13 @@
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.BLUETOOTH"/>
 
     <application
         android:label="@string/app_name"
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher_slave"
         android:name="com.bwarg.slave.PeepersApplication"
-        android:theme="@android:style/Theme.NoTitleBar" >
+        android:theme="@style/AppTheme.Base" >
         <activity
             android:name="com.bwarg.slave.StreamCameraActivity"
             android:label="@string/app_name"
@@ -45,7 +44,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name="com.bwarg.slave.PeepersPreferenceActivity" />
+        <activity android:name="com.bwarg.slave.SlaveSettingsActivity" />
     </application>
 </manifest>
 
