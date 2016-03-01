@@ -76,6 +76,7 @@ public final class StreamCameraActivity extends Activity
     private static String SERVICE_NAME = "BWARG";
     private static String SERVICE_TYPE = "_http._tcp.";
     private NsdManager mNsdManager;
+    public static boolean USE_NSD_MANAGER = false;
     private NsdManager.RegistrationListener mRegistrationListener;
     //private NetworkServerTask netSTask;
 
@@ -106,8 +107,10 @@ public final class StreamCameraActivity extends Activity
                 (PowerManager) getSystemService(POWER_SERVICE);
         mWakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 WAKE_LOCK_TAG);
-        mNsdManager = (NsdManager) getSystemService(Context.NSD_SERVICE);
-        registerService(DISCOVER_PORT_DEF);
+        if(USE_NSD_MANAGER){
+            mNsdManager = (NsdManager) getSystemService(Context.NSD_SERVICE);
+            registerService(DISCOVER_PORT_DEF);
+        }
         /*if(netSTask !=null)
             netSTask.closeNetworkService();
         netSTask = new NetworkServerTask();
