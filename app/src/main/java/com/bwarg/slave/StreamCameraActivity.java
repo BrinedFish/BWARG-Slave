@@ -15,7 +15,6 @@
 
 package com.bwarg.slave;
 
-import java.io.IOException;
 import java.net.InetAddress;
 import java.net.NetworkInterface;
 import java.net.UnknownHostException;
@@ -25,19 +24,14 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
-import android.preference.PreferenceManager;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -46,11 +40,6 @@ import android.widget.TextView;
 import com.google.gson.Gson;
 
 import org.apache.http.conn.util.InetAddressUtils;
-
-import javax.jmdns.JmDNS;
-import javax.jmdns.ServiceEvent;
-import javax.jmdns.ServiceInfo;
-import javax.jmdns.ServiceListener;
 
 public final class StreamCameraActivity extends Activity
         implements SurfaceHolder.Callback
@@ -73,11 +62,17 @@ public final class StreamCameraActivity extends Activity
     private TextView mIpAddressView = null;
     private WakeLock mWakeLock = null;
 
+    //Networking attributes
     private static String SERVICE_NAME = "BWARG";
     private static String SERVICE_TYPE = "_http._tcp.";
     private NsdManager mNsdManager;
     public static boolean USE_NSD_MANAGER = false;
     private NsdManager.RegistrationListener mRegistrationListener;
+
+    //Lock physical keys attributes
+    public static boolean LOCK_PHYS_KEYS = false;
+    HomeKeyLocker homeKeyLocker = new HomeKeyLocker();
+
     //private NetworkServerTask netSTask;
 
     public StreamCameraActivity()
@@ -107,6 +102,7 @@ public final class StreamCameraActivity extends Activity
                 (PowerManager) getSystemService(POWER_SERVICE);
         mWakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 WAKE_LOCK_TAG);
+
         if(USE_NSD_MANAGER){
             mNsdManager = (NsdManager) getSystemService(Context.NSD_SERVICE);
             registerService(DISCOVER_PORT_DEF);
@@ -148,6 +144,7 @@ public final class StreamCameraActivity extends Activity
         /*if(netSTask !=null)
             netSTask.closeNetworkService();*/
         super.onPause();
+        unlockPhysKeys();
     } // onPause()
 
     @Override
@@ -214,6 +211,11 @@ public final class StreamCameraActivity extends Activity
             }
 
         }
+        if(LOCK_PHYS_KEYS){
+            lockPhysKeys();
+        }else{
+            unlockPhysKeys();
+        }
     } // updatePrefCacheAndUi()
 
     private static String tryGetIpV4Address()
@@ -279,6 +281,8 @@ public final class StreamCameraActivity extends Activity
         SharedPreferences.Editor editor = preferences.edit();
         savePreferences(editor, streamPrefs);
         editor.commit();
+        unlockPhysKeys();
+        homeKeyLocker=null;
         super.onDestroy();
     }
 
@@ -346,13 +350,31 @@ public final class StreamCameraActivity extends Activity
     private StreamPreferences loadPreferences(SharedPreferences prefs){
         Gson gson = new Gson();
         StreamPreferences temp = gson.fromJson(prefs.getString("stream_prefs", StreamPreferences.defaultGsonString()), StreamPreferences.class);
-
-        Log.d("MJPEG_Cam", "StreamPrefs"+ prefs.getString("stream_prefs", StreamPreferences.defaultGsonString()) + " loaded at startup.");
+        LOCK_PHYS_KEYS = prefs.getBoolean("lock_phys_keys", false);
+        Log.d("MJPEG_Cam", "StreamPrefs" + prefs.getString("stream_prefs", StreamPreferences.defaultGsonString()) + " loaded at startup.");
         return temp;
     }
     private void savePreferences(SharedPreferences.Editor editor, StreamPreferences streamPrefs){
         Gson gson = new Gson();
         editor.putString("stream_prefs", gson.toJson(streamPrefs));
+        editor.putBoolean("lock_phys_keys", LOCK_PHYS_KEYS);
+    }
+   /* protected void setLockPhysKeys(boolean lock){
+        this.LOCK_PHYS_KEYS = lock;
+        if(lock){
+            lockPhysKeys();
+        }else{
+            unlockPhysKeys();
+        }
+    }
+    protected boolean isLockingPhysKeys(){
+        return LOCK_PHYS_KEYS;
+    }*/
+    private void lockPhysKeys(){
+        homeKeyLocker.lock(this);
+    }
+    private void unlockPhysKeys(){
+        homeKeyLocker.unlock();
     }
 } // class StreamCameraActivity
 

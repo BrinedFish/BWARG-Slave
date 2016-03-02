@@ -185,6 +185,20 @@
                 </RadioGroup>
             </LinearLayout>
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/interface_label"
+                android:layout_margin="10dp"
+                android:id="@+id/textView2" />
+
+            <CheckBox
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/lock_keys_checkbox"
+                android:id="@+id/lockCheckbox"
+                android:layout_marginLeft="20dp" />
+
             <Button
                 android:id="@+id/settings_done"
                 android:layout_width="fill_parent"

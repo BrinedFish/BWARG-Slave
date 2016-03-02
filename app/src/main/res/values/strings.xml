@@ -37,7 +37,7 @@
     <string name="bgp_label">BGP (smaller files, slower enc/dec)</string>
     <string name="camera_0_back">Back (Camera 0)</string>
     <string name="camera_1_front">Front (Camera 1)</string>
-
-
+    <string name="interface_label">Interface</string>
+    <string name="lock_keys_checkbox">Lock physical buttons (experimental)</string>
 </resources>
 

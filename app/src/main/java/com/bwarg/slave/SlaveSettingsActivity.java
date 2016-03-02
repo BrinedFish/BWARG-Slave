@@ -12,6 +12,7 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.RadioGroup;
@@ -42,6 +43,8 @@ public class SlaveSettingsActivity extends ActionBarActivity {
     EditText name_input;
 
     RadioGroup port_group;
+    CheckBox lock_checkbox;
+
     Button settings_done;
 
 
@@ -69,6 +72,8 @@ public class SlaveSettingsActivity extends ActionBarActivity {
 
         port_input = (EditText) findViewById(R.id.port_input);
         port_group = (RadioGroup) findViewById(R.id.port_radiogroup);
+
+        lock_checkbox=(CheckBox) findViewById(R.id.lockCheckbox);
 
         fillUI(streamPrefs);
 
@@ -103,8 +108,8 @@ public class SlaveSettingsActivity extends ActionBarActivity {
         quality_seekbar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                quality_text.setText(String.valueOf(progress+1)+"%");
-                streamPrefs.setQuality(progress+1);
+                quality_text.setText(String.valueOf(progress + 1) + "%");
+                streamPrefs.setQuality(progress + 1);
             }
 
             @Override
@@ -121,9 +126,16 @@ public class SlaveSettingsActivity extends ActionBarActivity {
             public void onCheckedChanged(RadioGroup group, int checkedId) {
                 if (checkedId == R.id.camera_0) {
                     streamPrefs.setCamIndex(0);
-                }else if(checkedId==R.id.camera_1){
+                } else if (checkedId == R.id.camera_1) {
                     streamPrefs.setCamIndex(1);
                 }
+            }
+        });
+
+        lock_checkbox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                StreamCameraActivity.LOCK_PHYS_KEYS = isChecked;
             }
         });
 
@@ -165,10 +177,10 @@ public class SlaveSettingsActivity extends ActionBarActivity {
         flash_switch.setChecked(prefs.useFlashLight());
         initSpinner(prefs);
         name_input.setText(prefs.getName());
-        quality_seekbar.setProgress(prefs.getQuality()-1);
-        quality_text.setText(String.valueOf(prefs.getQuality()-1)+"%");
+        quality_seekbar.setProgress(prefs.getQuality() - 1);
+        quality_text.setText(String.valueOf(prefs.getQuality() - 1) + "%");
         port_input.setText(String.valueOf(prefs.getIp_port()), TextView.BufferType.NORMAL);
-
+        lock_checkbox.setChecked(StreamCameraActivity.LOCK_PHYS_KEYS);
     }
 
     private void initSpinner(StreamPreferences prefs){
