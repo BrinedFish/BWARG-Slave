@@ -192,13 +192,33 @@ import android.view.SurfaceHolder;
         final Camera.Parameters params = camera.getParameters();
 
         final List<Camera.Size> supportedPreviewSizes = params.getSupportedPreviewSizes();
-        final Camera.Size selectedPreviewSize = supportedPreviewSizes.get(streamPrefs.getCameraPreviewIndex());
+        final Camera.Size selectedPreviewSize = supportedPreviewSizes.get(streamPrefs.getSizeIndex());
         params.setPreviewSize(selectedPreviewSize.width, selectedPreviewSize.height);
 
         if (streamPrefs.useFlashLight())
         {
             params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
         } // if
+        if(params.isAutoWhiteBalanceLockSupported()){
+            params.setAutoWhiteBalanceLock(streamPrefs.isAuto_white_balance_lock());
+        }
+        params.setWhiteBalance(streamPrefs.getWhitebalance());
+
+        if(params.isAutoExposureLockSupported()){
+            params.setAutoExposureLock(streamPrefs.isAuto_exposure_lock() );
+        }
+        String temp = params.get("iso");
+        if(temp!=null)
+            params.set("iso", streamPrefs.getIso());
+        temp = params.get("iso.speed");
+        if(temp!=null)
+            params.set("iso-speed", streamPrefs.getIso());
+
+        params.setFocusMode(streamPrefs.getFocus_mode());
+
+        if(params.isVideoStabilizationSupported()){
+            params.setVideoStabilization(streamPrefs.isImage_stabilization());
+        }
 
         // Set Preview FPS range. The range with the greatest maximum
         // is returned first.

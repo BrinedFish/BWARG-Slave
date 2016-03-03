@@ -46,6 +46,7 @@
             </intent-filter>
         </activity>
         <activity android:name="com.bwarg.slave.SlaveSettingsActivity" />
+        <activity android:name="com.bwarg.slave.ImageSettingsActivity" />
     </application>
 </manifest>
 
