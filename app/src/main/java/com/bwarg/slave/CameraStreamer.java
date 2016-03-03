@@ -43,11 +43,12 @@ import android.view.SurfaceHolder;
     private final Object mLock = new Object();
     private final MovingAverage mAverageSpf = new MovingAverage(50 /* numValues */);
 
-    private final int mCameraIndex;
+    /*private final int mCameraIndex;
     private final boolean mUseFlashLight;
     private final int mPort;
     private final int mPreviewSizeIndex;
-    private final int mJpegQuality;
+    private final int mJpegQuality;*/
+    private StreamPreferences streamPrefs = new StreamPreferences();
     private final SurfaceHolder mPreviewDisplay;
 
     private boolean mRunning = false;
@@ -65,8 +66,7 @@ import android.view.SurfaceHolder;
     private long mNumFrames = 0L;
     private long mLastTimestamp = Long.MIN_VALUE;
 
-    /* package */ CameraStreamer(final int cameraIndex, final boolean useFlashLight, final int port,
-            final int previewSizeIndex, final int jpegQuality, final SurfaceHolder previewDisplay)
+    /* package */ CameraStreamer(final StreamPreferences streamPrefs, final SurfaceHolder previewDisplay)
     {
         super();
 
@@ -75,11 +75,12 @@ import android.view.SurfaceHolder;
             throw new IllegalArgumentException("previewDisplay must not be null");
         } // if
 
-        mCameraIndex = cameraIndex;
+        /*mCameraIndex = cameraIndex;
         mUseFlashLight = useFlashLight;
         mPort = port;
         mPreviewSizeIndex = previewSizeIndex;
-        mJpegQuality = jpegQuality;
+        mJpegQuality = jpegQuality;*/
+        this.streamPrefs = streamPrefs;
         mPreviewDisplay = previewDisplay;
     } // constructor(SurfaceHolder)
 
@@ -187,17 +188,37 @@ import android.view.SurfaceHolder;
     {
         // Throws RuntimeException if the camera is currently opened
         // by another application.
-        final Camera camera = Camera.open(mCameraIndex);
+        final Camera camera = Camera.open(streamPrefs.getCamIndex());
         final Camera.Parameters params = camera.getParameters();
 
         final List<Camera.Size> supportedPreviewSizes = params.getSupportedPreviewSizes();
-        final Camera.Size selectedPreviewSize = supportedPreviewSizes.get(mPreviewSizeIndex);
+        final Camera.Size selectedPreviewSize = supportedPreviewSizes.get(streamPrefs.getSizeIndex());
         params.setPreviewSize(selectedPreviewSize.width, selectedPreviewSize.height);
 
-        if (mUseFlashLight)
+        if (streamPrefs.useFlashLight())
         {
             params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
         } // if
+        if(params.isAutoWhiteBalanceLockSupported()){
+            params.setAutoWhiteBalanceLock(streamPrefs.isAuto_white_balance_lock());
+        }
+        params.setWhiteBalance(streamPrefs.getWhitebalance());
+
+        if(params.isAutoExposureLockSupported()){
+            params.setAutoExposureLock(streamPrefs.isAuto_exposure_lock() );
+        }
+        String temp = params.get("iso");
+        if(temp!=null)
+            params.set("iso", streamPrefs.getIso());
+        temp = params.get("iso.speed");
+        if(temp!=null)
+            params.set("iso-speed", streamPrefs.getIso());
+
+        params.setFocusMode(streamPrefs.getFocus_mode());
+
+        if(params.isVideoStabilizationSupported()){
+            params.setVideoStabilization(streamPrefs.isImage_stabilization());
+        }
 
         // Set Preview FPS range. The range with the greatest maximum
         // is returned first.
@@ -233,7 +254,7 @@ import android.view.SurfaceHolder;
         // the uncompressed image.
         mJpegOutputStream = new MemoryOutputStream(mPreviewBufferSize);
 
-        final MJpegHttpStreamer streamer = new MJpegHttpStreamer(mPort, mPreviewBufferSize);
+        final MJpegHttpStreamer streamer = new MJpegHttpStreamer(streamPrefs.getIp_port(), mPreviewBufferSize);
         streamer.start();
 
         synchronized (mLock)
@@ -298,7 +319,7 @@ import android.view.SurfaceHolder;
         // Create JPEG
         final YuvImage image = new YuvImage(data, mPreviewFormat, mPreviewWidth, mPreviewHeight,
                 null /* strides */);
-        image.compressToJpeg(mPreviewRect, mJpegQuality, mJpegOutputStream);
+        image.compressToJpeg(mPreviewRect, streamPrefs.getQuality(), mJpegOutputStream);
 
         mMJpegHttpStreamer.streamJpeg(mJpegOutputStream.getBuffer(), mJpegOutputStream.getLength(),
                 timestamp);

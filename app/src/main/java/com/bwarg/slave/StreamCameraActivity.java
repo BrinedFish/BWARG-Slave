@@ -21,28 +21,24 @@ import java.net.UnknownHostException;
 import java.util.Enumeration;
 
 import android.app.Activity;
-import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
-import android.content.pm.PackageManager;
+import android.hardware.Camera;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.PowerManager;
 import android.os.PowerManager.WakeLock;
-import android.preference.PreferenceManager;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.TextView;
+
+import com.google.gson.Gson;
 
 import org.apache.http.conn.util.InetAddressUtils;
 
@@ -50,21 +46,10 @@ public final class StreamCameraActivity extends Activity
         implements SurfaceHolder.Callback
 {
     private static final String TAG = StreamCameraActivity.class.getSimpleName();
-
+    private static final int REQUEST_SETTINGS = 1;
     private static final String WAKE_LOCK_TAG = "peepers";
 
-    private static final String PREF_CAMERA = "camera";
-    private static final int PREF_CAMERA_INDEX_DEF = 0;
-    private static final String PREF_FLASH_LIGHT = "flash_light";
-    private static final boolean PREF_FLASH_LIGHT_DEF = false;
-    private static final String PREF_PORT = "port";
-    private static final int PREF_PORT_DEF = 8080;
     private static final int DISCOVER_PORT_DEF = 8888;
-    private static final String PREF_JPEG_SIZE = "size";
-    private static final String PREF_JPEG_QUALITY = "jpeg_quality";
-    private static final int PREF_JPEG_QUALITY_DEF = 40;
-    // preview sizes will always have at least one element, so this is safe
-    private static final int PREF_PREVIEW_SIZE_INDEX_DEF = 0;
 
     private boolean mRunning = false;
     private boolean mPreviewDisplayCreated = false;
@@ -72,21 +57,24 @@ public final class StreamCameraActivity extends Activity
     private CameraStreamer mCameraStreamer = null;
 
     private String mIpAddress = "";
-    private int mCameraIndex = PREF_CAMERA_INDEX_DEF;
-    private boolean mUseFlashLight = PREF_FLASH_LIGHT_DEF;
-    public static int mPort = PREF_PORT_DEF;
-    private int mJpegQuality = PREF_JPEG_QUALITY_DEF;
-    private int mPrevieSizeIndex = PREF_PREVIEW_SIZE_INDEX_DEF;
+
+    private StreamPreferences streamPrefs = new StreamPreferences();
+
     private TextView mIpAddressView = null;
-    private LoadPreferencesTask mLoadPreferencesTask = null;
-    private SharedPreferences mPrefs = null;
-    private MenuItem mSettingsMenuItem = null;
     private WakeLock mWakeLock = null;
 
-    private String SERVICE_NAME = "BWARG Slave";
-    private String SERVICE_TYPE = "_http._tcp.";
+    //Networking attributes
+    private static String SERVICE_NAME = "BWARG";
+    private static String SERVICE_TYPE = "_http._tcp.";
     private NsdManager mNsdManager;
+    public static boolean USE_NSD_MANAGER = false;
     private NsdManager.RegistrationListener mRegistrationListener;
+
+    //Lock physical keys attributes
+    public static boolean LOCK_PHYS_KEYS = false;
+    HomeKeyLocker homeKeyLocker = new HomeKeyLocker();
+
+    //private NetworkServerTask netSTask;
 
     public StreamCameraActivity()
     {
@@ -99,13 +87,10 @@ public final class StreamCameraActivity extends Activity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        new LoadPreferencesTask().execute();
-
-        BluetoothAdapter myDevice = BluetoothAdapter.getDefaultAdapter();
-        String deviceName = myDevice.getName();
-
-        new BwargServer(deviceName).execute(this);
-
+        Camera camera = Camera.open();
+        Camera.Parameters params = camera.getParameters();
+        Log.d(TAG, "Camera parameters : " + params.flatten().replaceAll(";", ";\n"));
+        camera.release();
 
         mPreviewDisplay = ((SurfaceView) findViewById(R.id.camera)).getHolder();
         mPreviewDisplay.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
@@ -113,14 +98,24 @@ public final class StreamCameraActivity extends Activity
 
         mIpAddress = tryGetIpV4Address();
         mIpAddressView = (TextView) findViewById(R.id.ip_address);
-        updatePrefCacheAndUi();
+
+        SharedPreferences sharedPrefs = getSharedPreferences("SAVED_VALUES", MODE_PRIVATE);
+        streamPrefs = loadPreferences(sharedPrefs);
+        updatePrefCacheAndUi(streamPrefs);
 
         final PowerManager powerManager =
                 (PowerManager) getSystemService(POWER_SERVICE);
         mWakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 WAKE_LOCK_TAG);
-        mNsdManager = (NsdManager) getSystemService(Context.NSD_SERVICE);
-        registerService(DISCOVER_PORT_DEF);
+
+        if(USE_NSD_MANAGER){
+            mNsdManager = (NsdManager) getSystemService(Context.NSD_SERVICE);
+            registerService(DISCOVER_PORT_DEF);
+        }
+        /*if(netSTask !=null)
+            netSTask.closeNetworkService();
+        netSTask = new NetworkServerTask();
+        netSTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, "");*/
 
     } // onCreate(Bundle)
 
@@ -129,17 +124,15 @@ public final class StreamCameraActivity extends Activity
     {
         super.onResume();
         mRunning = true;
-        if (mPrefs != null)
-        {
-            mPrefs.registerOnSharedPreferenceChangeListener(
-                    mSharedPreferenceListener);
-        } // if
-        updatePrefCacheAndUi();
+
+        updatePrefCacheAndUi(streamPrefs);
         tryStartCameraStreamer();
         mWakeLock.acquire();
         if (mNsdManager != null) {
             registerService(DISCOVER_PORT_DEF);
         }
+        /*if(netSTask !=null)
+            netSTask.closeNetworkService();*/
     } // onResume()
 
     @Override
@@ -148,21 +141,20 @@ public final class StreamCameraActivity extends Activity
         mWakeLock.release();
         super.onPause();
         mRunning = false;
-        if (mPrefs != null)
-        {
-            mPrefs.unregisterOnSharedPreferenceChangeListener(
-                    mSharedPreferenceListener);
-        } // if
+
         ensureCameraStreamerStopped();
         if (mNsdManager != null) {
             mNsdManager.unregisterService(mRegistrationListener);
         }
+        /*if(netSTask !=null)
+            netSTask.closeNetworkService();*/
         super.onPause();
+        unlockPhysKeys();
     } // onPause()
 
     @Override
     public void surfaceChanged(final SurfaceHolder holder, final int format,
-            final int width, final int height)
+                               final int width, final int height)
     {
         // Ingored
     } // surfaceChanged(SurfaceHolder, int, int, int)
@@ -183,10 +175,9 @@ public final class StreamCameraActivity extends Activity
 
     private void tryStartCameraStreamer()
     {
-        if (mRunning && mPreviewDisplayCreated && mPrefs != null)
+        if (mRunning && mPreviewDisplayCreated/* && mPrefs != null*/)
         {
-            mCameraStreamer = new CameraStreamer(mCameraIndex, mUseFlashLight, mPort,
-                    mPrevieSizeIndex, mJpegQuality, mPreviewDisplay);
+            mCameraStreamer = new CameraStreamer(streamPrefs, mPreviewDisplay);
             mCameraStreamer.start();
         } // if
     } // tryStartCameraStreamer()
@@ -200,138 +191,37 @@ public final class StreamCameraActivity extends Activity
         } // if
     } // stopCameraStreamer()
 
-    @Override
-    public boolean onCreateOptionsMenu(final Menu menu)
-    {
-        super.onCreateOptionsMenu(menu);
-        mSettingsMenuItem = menu.add(R.string.settings);
-        mSettingsMenuItem.setIcon(android.R.drawable.ic_menu_manage);
-        return true;
-    } // onCreateOptionsMenu(Menu)
-
-    @Override
-    public boolean onOptionsItemSelected(final MenuItem item)
-    {
-        if (item != mSettingsMenuItem)
-        {
-            return super.onOptionsItemSelected(item);
-        } // if
-        startActivity(new Intent(this, PeepersPreferenceActivity.class));
-        return true;
-    } // onOptionsItemSelected(MenuItem)
-
     public void openSettings(View v){
-        startActivity(new Intent(this, PeepersPreferenceActivity.class));
+        Intent intent = new Intent(this, SlaveSettingsActivity.class);
+        Gson gson = new Gson();
+        String gsonString =  gson.toJson(streamPrefs);
+        Log.d(TAG, "GSON string given to settings : "+gsonString);
+        intent.putExtra("stream_prefs", gsonString);
+
+        startActivityForResult(intent, REQUEST_SETTINGS);
     }
-    private final class LoadPreferencesTask
-            extends AsyncTask<Void, Void, SharedPreferences>
+
+    private final void updatePrefCacheAndUi(StreamPreferences streamPrefs)
     {
-        private LoadPreferencesTask()
-        {
-            super();
-        } // constructor()
+        this.streamPrefs = streamPrefs;
+        mIpAddressView.setText("http://" + mIpAddress + ":" + streamPrefs.getIp_port() + "/");
+        if(mNsdManager!=null && mRegistrationListener!=null){
+            try{
+                mNsdManager.unregisterService(mRegistrationListener);
+                mRegistrationListener=null;
+            }catch (IllegalArgumentException iae){
+                iae.printStackTrace();
+                mRegistrationListener= null;
+                registerService(DISCOVER_PORT_DEF);
+            }
 
-        @Override
-        protected SharedPreferences doInBackground(final Void... noParams)
-        {
-            return PreferenceManager.getDefaultSharedPreferences(
-                    StreamCameraActivity.this);
-        } // doInBackground()
-
-        @Override
-        protected void onPostExecute(final SharedPreferences prefs)
-        {
-            StreamCameraActivity.this.mPrefs = prefs;
-            prefs.registerOnSharedPreferenceChangeListener(
-                    mSharedPreferenceListener);
-            updatePrefCacheAndUi();
-            tryStartCameraStreamer();
-        } // onPostExecute(SharedPreferences)
-
-
-    } // class LoadPreferencesTask
-
-    private final OnSharedPreferenceChangeListener mSharedPreferenceListener =
-            new OnSharedPreferenceChangeListener()
-    {
-        @Override
-        public void onSharedPreferenceChanged(final SharedPreferences prefs,
-                final String key)
-        {
-            updatePrefCacheAndUi();
-        } // onSharedPreferenceChanged(SharedPreferences, String)
-
-    }; // mSharedPreferencesListener
-
-    private final int getPrefInt(final String key, final int defValue)
-    {
-        // We can't just call getInt because the preference activity
-        // saves everything as a string.
-        try
-        {
-            return Integer.parseInt(mPrefs.getString(key, null /* defValue */));
-        } // try
-        catch (final NullPointerException e)
-        {
-            return defValue;
-        } // catch
-        catch (final NumberFormatException e)
-        {
-            return defValue;
-        } // catch
-    } // getPrefInt(String, int)
-
-    private final void updatePrefCacheAndUi()
-    {
-        mCameraIndex = getPrefInt(PREF_CAMERA, PREF_CAMERA_INDEX_DEF);
-        if (hasFlashLight())
-        {
-            if (mPrefs != null)
-            {
-                mUseFlashLight = mPrefs.getBoolean(PREF_FLASH_LIGHT,
-                        PREF_FLASH_LIGHT_DEF);
-            } // if
-            else
-            {
-                mUseFlashLight = PREF_FLASH_LIGHT_DEF;
-            } // else
-        } //if
-        else
-        {
-            mUseFlashLight = false;
-        } // else
-
-        // XXX: This validation should really be in the preferences activity.
-        mPort = getPrefInt(PREF_PORT, PREF_PORT_DEF);
-        // The port must be in the range [1024 65535]
-        if (mPort < 1024)
-        {
-            mPort = 1024;
-        } // if
-        else if (mPort > 65535)
-        {
-            mPort = 65535;
-        } // else if
-
-        mPrevieSizeIndex = getPrefInt(PREF_JPEG_SIZE, PREF_PREVIEW_SIZE_INDEX_DEF);
-        mJpegQuality = getPrefInt(PREF_JPEG_QUALITY, PREF_JPEG_QUALITY_DEF);
-        // The JPEG quality must be in the range [0 100]
-        if (mJpegQuality < 0)
-        {
-            mJpegQuality = 0;
-        } // if
-        else if (mJpegQuality > 100)
-        {
-            mJpegQuality = 100;
-        } // else if
-        mIpAddressView.setText("http://" + mIpAddress + ":" + mPort + "/");
+        }
+        if(LOCK_PHYS_KEYS){
+            lockPhysKeys();
+        }else{
+            unlockPhysKeys();
+        }
     } // updatePrefCacheAndUi()
-
-    private boolean hasFlashLight()
-    {
-        return getPackageManager().hasSystemFeature(
-                PackageManager.FEATURE_CAMERA_FLASH);
-    } // hasFlashLight()
 
     private static String tryGetIpV4Address()
     {
@@ -365,22 +255,47 @@ public final class StreamCameraActivity extends Activity
         return null;
     } // tryGetIpV4Address()
 
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch (requestCode) {
+            case REQUEST_SETTINGS:
+                if (resultCode == Activity.RESULT_OK) {
+                    //left cam
+                    Gson gson = new Gson();
+                    streamPrefs = gson.fromJson(data.getStringExtra("stream_prefs"), StreamPreferences.class);
 
+                    SharedPreferences preferences = getSharedPreferences("SAVED_VALUES", MODE_PRIVATE);
+                    SharedPreferences.Editor editor = preferences.edit();
+                    savePreferences(editor, streamPrefs);
+                    editor.commit();
 
+                    updatePrefCacheAndUi(streamPrefs);
+                    tryStartCameraStreamer();
+                }
+                break;
+        }
+    }
 
     @Override
     protected void onDestroy() {
         if (mNsdManager != null) {
             mNsdManager.unregisterService(mRegistrationListener);
+            mRegistrationListener = null;
         }
+        SharedPreferences preferences = getSharedPreferences("SAVED_VALUES", MODE_PRIVATE);
+        SharedPreferences.Editor editor = preferences.edit();
+        savePreferences(editor, streamPrefs);
+        editor.commit();
+        unlockPhysKeys();
+        homeKeyLocker=null;
         super.onDestroy();
     }
 
     public void registerService(int port) {
         NsdServiceInfo serviceInfo = new NsdServiceInfo();
-        serviceInfo.setServiceName(SERVICE_NAME);
+        serviceInfo.setServiceName(SERVICE_NAME + streamPrefs.getName());
         serviceInfo.setServiceType(SERVICE_TYPE);
-        serviceInfo.setPort(mPort);
+        serviceInfo.setPort(streamPrefs.getIp_port());
         try {
             serviceInfo.setHost(InetAddress.getByName(getIP()));
         } catch (UnknownHostException e) {
@@ -390,8 +305,8 @@ public final class StreamCameraActivity extends Activity
         mRegistrationListener = new NsdManager.RegistrationListener() {
 
             @Override
-            public void onServiceRegistered(NsdServiceInfo NsdServiceInfo) {
-                String mServiceName = NsdServiceInfo.getServiceName();
+            public void onServiceRegistered(NsdServiceInfo nsdServiceInfo) {
+                String mServiceName = nsdServiceInfo.getServiceName();
                 SERVICE_NAME = mServiceName;
                 Log.d(TAG, "Registered name : " + mServiceName);
             }
@@ -436,6 +351,35 @@ public final class StreamCameraActivity extends Activity
                 (ipAddress >> 16 & 0xff),
                 (ipAddress >> 24 & 0xff));
 
+    }
+    private StreamPreferences loadPreferences(SharedPreferences prefs){
+        Gson gson = new Gson();
+        StreamPreferences temp = gson.fromJson(prefs.getString("stream_prefs", StreamPreferences.defaultGsonString()), StreamPreferences.class);
+        LOCK_PHYS_KEYS = prefs.getBoolean("lock_phys_keys", false);
+        Log.d("MJPEG_Cam", "StreamPrefs" + prefs.getString("stream_prefs", StreamPreferences.defaultGsonString()) + " loaded at startup.");
+        return temp;
+    }
+    private void savePreferences(SharedPreferences.Editor editor, StreamPreferences streamPrefs){
+        Gson gson = new Gson();
+        editor.putString("stream_prefs", gson.toJson(streamPrefs));
+        editor.putBoolean("lock_phys_keys", LOCK_PHYS_KEYS);
+    }
+   /* protected void setLockPhysKeys(boolean lock){
+        this.LOCK_PHYS_KEYS = lock;
+        if(lock){
+            lockPhysKeys();
+        }else{
+            unlockPhysKeys();
+        }
+    }
+    protected boolean isLockingPhysKeys(){
+        return LOCK_PHYS_KEYS;
+    }*/
+    private void lockPhysKeys(){
+        homeKeyLocker.lock(this);
+    }
+    private void unlockPhysKeys(){
+        homeKeyLocker.unlock();
     }
 } // class StreamCameraActivity
 
