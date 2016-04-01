@@ -227,6 +227,13 @@
                     android:text="@string/image_stabilization_checkBox"
                     android:id="@+id/image_stabilization"
                     android:layout_marginLeft="20dp" />
+
+                <CheckBox
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/fast_fps_mode_checkbox"
+                    android:id="@+id/fast_fps_checkbox"
+                    android:layout_marginLeft="20dp" />
             </LinearLayout>
 
             <Button

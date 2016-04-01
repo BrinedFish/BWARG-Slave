@@ -27,6 +27,7 @@ public class StreamPreferences {
     private boolean image_stabilization = false;
     private String iso = "auto";
     private String iso_speed = "";
+    private int fast_fps_mode = 0;
 
     public int getIp_port() {
         return ip_port;
@@ -126,6 +127,14 @@ public class StreamPreferences {
 
     public void setSizeIndex(int sizeIndex) {
         this.sizeIndex = sizeIndex;
+    }
+
+    public int getFast_fps_mode() {
+        return fast_fps_mode;
+    }
+
+    public void setFast_fps_mode(int fast_fps_mode) {
+        this.fast_fps_mode = fast_fps_mode;
     }
 
     public static String defaultGsonString(){
