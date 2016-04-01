@@ -38,6 +38,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
     private Spinner iso_spinner;
     private Spinner focus_mode_spinner;
     private CheckBox stabilize_image_checkBox;
+    private CheckBox fast_fps_mode_checkBox;
 
     private StreamPreferences streamPrefs = new StreamPreferences();
 
@@ -66,6 +67,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
         iso_spinner = (Spinner) findViewById(R.id.iso_spinner);
         focus_mode_spinner = (Spinner) findViewById(R.id.focus_spinner);
         stabilize_image_checkBox = (CheckBox) findViewById(R.id.image_stabilization);
+        fast_fps_mode_checkBox = (CheckBox) findViewById(R.id.fast_fps_checkbox);
 
         fillUI(streamPrefs);
 
@@ -116,7 +118,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
         auto_exposure_lock_checkBoc.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if(auto_exposure_lock_checkBoc.equals((CheckBox)buttonView))
+                if (auto_exposure_lock_checkBoc.equals((CheckBox) buttonView))
                     streamPrefs.setAuto_exposure_lock(isChecked);
             }
         });
@@ -145,6 +147,17 @@ public class ImageSettingsActivity  extends ActionBarActivity {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (stabilize_image_checkBox.equals((CheckBox) buttonView))
                     streamPrefs.setImage_stabilization(isChecked);
+            }
+        });
+        fast_fps_mode_checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+                if (fast_fps_mode_checkBox.equals((CheckBox) buttonView)) {
+                    int val = 0;
+                    if (isChecked)
+                        val = 1;
+                    streamPrefs.setFast_fps_mode(val);
+                }
             }
         });
         settings_done = (Button) findViewById(R.id.settings_done);
@@ -182,6 +195,11 @@ public class ImageSettingsActivity  extends ActionBarActivity {
         stabilize_image_checkBox.setEnabled(params.isVideoStabilizationSupported());
         if(stabilize_image_checkBox.isEnabled()) {
             stabilize_image_checkBox.setChecked(prefs.isImage_stabilization());
+        }
+       String fastFPSModeSupported = params.get("fast-fps-mode");
+        fast_fps_mode_checkBox.setEnabled(fastFPSModeSupported != null);
+        if(fast_fps_mode_checkBox.isEnabled()) {
+            fast_fps_mode_checkBox.setChecked(streamPrefs.getFast_fps_mode() == 1);
         }
         initSpinners(prefs, params);
     }

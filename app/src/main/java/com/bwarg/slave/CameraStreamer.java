@@ -16,12 +16,14 @@
 package com.bwarg.slave;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.List;
 
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
+import android.opengl.GLES20;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Handler;
@@ -191,49 +193,7 @@ import android.view.SurfaceHolder;
         final Camera camera = Camera.open(streamPrefs.getCamIndex());
         final Camera.Parameters params = camera.getParameters();
 
-        final List<Camera.Size> supportedPreviewSizes = params.getSupportedPreviewSizes();
-        final Camera.Size selectedPreviewSize = supportedPreviewSizes.get(streamPrefs.getSizeIndex());
-        params.setPreviewSize(selectedPreviewSize.width, selectedPreviewSize.height);
-
-        if (streamPrefs.useFlashLight())
-        {
-            params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
-        } // if
-        if(params.isAutoWhiteBalanceLockSupported()){
-            params.setAutoWhiteBalanceLock(streamPrefs.isAuto_white_balance_lock());
-        }
-        params.setWhiteBalance(streamPrefs.getWhitebalance());
-
-        if(params.isAutoExposureLockSupported()){
-            params.setAutoExposureLock(streamPrefs.isAuto_exposure_lock() );
-        }
-        String temp = params.get("iso");
-        if(temp!=null)
-            params.set("iso", streamPrefs.getIso());
-        temp = params.get("iso.speed");
-        if(temp!=null)
-            params.set("iso-speed", streamPrefs.getIso());
-
-        params.setFocusMode(streamPrefs.getFocus_mode());
-
-        if(params.isVideoStabilizationSupported()){
-            params.setVideoStabilization(streamPrefs.isImage_stabilization());
-        }
-
-        // Set Preview FPS range. The range with the greatest maximum
-        // is returned first.
-        final List<int[]> supportedPreviewFpsRanges = params.getSupportedPreviewFpsRange();
-        // XXX: However sometimes it returns null. This is a known bug
-        // https://code.google.com/p/android/issues/detail?id=6271
-        // In which case, we just don't set it.
-        if (supportedPreviewFpsRanges != null)
-        {
-            final int[] range = supportedPreviewFpsRanges.get(0);
-            params.setPreviewFpsRange(range[Camera.Parameters.PREVIEW_FPS_MIN_INDEX],
-                    range[Camera.Parameters.PREVIEW_FPS_MAX_INDEX]);
-            camera.setParameters(params);
-        } // if
-
+        applyImageSettings(params, camera);
         // Set up preview callback
         mPreviewFormat = params.getPreviewFormat();
         final Camera.Size previewSize = params.getPreviewSize();
@@ -282,7 +242,65 @@ import android.view.SurfaceHolder;
             mCamera = camera;
         } // synchronized
     } // startStreamingIfRunning()
+private void applyImageSettings(Camera.Parameters params, Camera camera){
+    final List<Camera.Size> supportedPreviewSizes = params.getSupportedPreviewSizes();
+    final Camera.Size selectedPreviewSize = supportedPreviewSizes.get(streamPrefs.getSizeIndex());
+    params.setPreviewSize(selectedPreviewSize.width, selectedPreviewSize.height);
 
+    if (streamPrefs.useFlashLight())
+    {
+        params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+    } // if
+    params.setWhiteBalance(streamPrefs.getWhitebalance());
+    if(params.isAutoWhiteBalanceLockSupported()){
+        params.setAutoWhiteBalanceLock(streamPrefs.isAuto_white_balance_lock());
+    }
+
+    if(params.isAutoExposureLockSupported()){
+        params.setAutoExposureLock(streamPrefs.isAuto_exposure_lock() );
+        Log.d(TAG, "Camera parameters : setting auto-exposure-lock to " + streamPrefs.isAuto_exposure_lock());
+        Log.d(TAG, "Camera parameters : auto-exposure-lock set to " + params.getAutoExposureLock());
+    }else{
+        Log.d(TAG, "Camera parameters : auto-exposure-lock not supported.");
+    }
+    String temp = params.get("iso");
+    if(temp!=null)
+        params.set("iso", streamPrefs.getIso());
+
+    temp = params.get("iso.speed");
+    if(temp!=null)
+        params.set("iso-speed", streamPrefs.getIso());
+
+    temp = params.get("fast-fps-mode");
+    if(temp!=null) {
+        params.set("fast-fps-mode", streamPrefs.getFast_fps_mode());
+    }
+    params.setFocusMode(streamPrefs.getFocus_mode());
+
+    if(params.isVideoStabilizationSupported()){
+        params.setVideoStabilization(streamPrefs.isImage_stabilization());
+    }
+    //params.setColorEffect(Camera.Parameters.Effe);
+
+    // Set Preview FPS range. The range with the greatest maximum
+    // is returned first.
+    final List<int[]> supportedPreviewFpsRanges = params.getSupportedPreviewFpsRange();
+    // XXX: However sometimes it returns null. This is a known bug
+    // https://code.google.com/p/android/issues/detail?id=6271
+    // In which case, we just don't set it.
+    if (supportedPreviewFpsRanges != null)
+    {
+        /*final int[] range = supportedPreviewFpsRanges.get(0);
+        params.setPreviewFpsRange(range[Camera.Parameters.PREVIEW_FPS_MIN_INDEX],
+                range[Camera.Parameters.PREVIEW_FPS_MAX_INDEX]);*/
+        params.set("preview-frame-rate", 30);
+        camera.setParameters(params);
+        //Log.i(TAG, "Camera parameters applied: " + params.flatten().replaceAll(";", ";\n"));
+        Log.i(TAG, "Camera parameters applied: " + camera.getParameters().flatten().replaceAll(";", ";\n"));
+
+    } // if
+
+}
     private final Camera.PreviewCallback mPreviewCallback = new Camera.PreviewCallback()
     {
         @Override
@@ -291,6 +309,11 @@ import android.view.SurfaceHolder;
             final Long timestamp = SystemClock.elapsedRealtime();
             final Message message = mWorkHandler.obtainMessage();
             message.what = MESSAGE_SEND_PREVIEW_FRAME;
+
+            ByteBuffer buffer = ByteBuffer.allocateDirect(4 * 262144);
+            buffer.put(data);
+            buffer.position(0);
+
             message.obj = new Object[]{ data, camera, timestamp };
             message.sendToTarget();
         } // onPreviewFrame(byte[], Camera)
