@@ -16,12 +16,17 @@
 package com.bwarg.slave;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
 import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
+import android.opengl.GLES20;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Handler;
@@ -34,7 +39,8 @@ import android.view.SurfaceHolder;
 /* package */ final class CameraStreamer extends Object
 {
     private static final String TAG = CameraStreamer.class.getSimpleName();
-
+    private static final int WIDTH = 1280;
+    private static final int HEIGHT = 720;
     private static final int MESSAGE_TRY_START_STREAMING = 0;
     private static final int MESSAGE_SEND_PREVIEW_FRAME = 1;
 
@@ -191,49 +197,7 @@ import android.view.SurfaceHolder;
         final Camera camera = Camera.open(streamPrefs.getCamIndex());
         final Camera.Parameters params = camera.getParameters();
 
-        final List<Camera.Size> supportedPreviewSizes = params.getSupportedPreviewSizes();
-        final Camera.Size selectedPreviewSize = supportedPreviewSizes.get(streamPrefs.getSizeIndex());
-        params.setPreviewSize(selectedPreviewSize.width, selectedPreviewSize.height);
-
-        if (streamPrefs.useFlashLight())
-        {
-            params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
-        } // if
-        if(params.isAutoWhiteBalanceLockSupported()){
-            params.setAutoWhiteBalanceLock(streamPrefs.isAuto_white_balance_lock());
-        }
-        params.setWhiteBalance(streamPrefs.getWhitebalance());
-
-        if(params.isAutoExposureLockSupported()){
-            params.setAutoExposureLock(streamPrefs.isAuto_exposure_lock() );
-        }
-        String temp = params.get("iso");
-        if(temp!=null)
-            params.set("iso", streamPrefs.getIso());
-        temp = params.get("iso.speed");
-        if(temp!=null)
-            params.set("iso-speed", streamPrefs.getIso());
-
-        params.setFocusMode(streamPrefs.getFocus_mode());
-
-        if(params.isVideoStabilizationSupported()){
-            params.setVideoStabilization(streamPrefs.isImage_stabilization());
-        }
-
-        // Set Preview FPS range. The range with the greatest maximum
-        // is returned first.
-        final List<int[]> supportedPreviewFpsRanges = params.getSupportedPreviewFpsRange();
-        // XXX: However sometimes it returns null. This is a known bug
-        // https://code.google.com/p/android/issues/detail?id=6271
-        // In which case, we just don't set it.
-        if (supportedPreviewFpsRanges != null)
-        {
-            final int[] range = supportedPreviewFpsRanges.get(0);
-            params.setPreviewFpsRange(range[Camera.Parameters.PREVIEW_FPS_MIN_INDEX],
-                    range[Camera.Parameters.PREVIEW_FPS_MAX_INDEX]);
-            camera.setParameters(params);
-        } // if
-
+        applyImageSettings(params, camera);
         // Set up preview callback
         mPreviewFormat = params.getPreviewFormat();
         final Camera.Size previewSize = params.getPreviewSize();
@@ -278,11 +242,121 @@ import android.view.SurfaceHolder;
             } // catch
 
             mMJpegHttpStreamer = streamer;
+
             camera.startPreview();
             mCamera = camera;
         } // synchronized
     } // startStreamingIfRunning()
+    private int clamp(int x, int min, int max) {
+        if (x > max) {
+            return max;
+        }
+        if (x < min) {
+            return min;
+        }
+        return x;
+    }
+    /*private Rect calculateTapArea(float x, float y, float coefficient) {
+        int orientation = 0;
+        Camera.CameraInfo info = new Camera.CameraInfo();
+        //getCameraInfo(0, info);
 
+        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            orientation = (info.orientation + degrees) % 360;
+            orientation = (360 - orientation) % 360;  // compensate the mirror
+        } else {  // back-facing
+            orientation = (info.orientation - degrees + 360) % 360;
+        }
+        Matrix matrix = new Matrix();
+        Matrix matrix2 = new Matrix();
+        matrix2.postRotate(orientation);
+        matrix2.postScale(WIDTH / 2000f, HEIGHT / 2000f);
+        matrix2.postTranslate(WIDTH / 2f, HEIGHT / 2f);
+        matrix2.invert(matrix);
+
+        double focusAreaSize = getResources().getDimensionPixelSize(R.dimen.camera_focus_area_size);
+        int areaSize = Float.valueOf(focusAreaSize * coefficient).intValue();
+
+        int left = clamp((int) x - areaSize / 2, 0, WIDTH - areaSize);
+        int top = clamp((int) y - areaSize / 2, 0, HEIGHT.getHeight() - areaSize);
+
+        RectF rectF = new RectF(left, top, left + areaSize, top + areaSize);
+        matrix.mapRect(rectF);
+
+        return new Rect(Math.round(rectF.left), Math.round(rectF.top), Math.round(rectF.right), Math.round(rectF.bottom));
+    }*/
+private void applyImageSettings(Camera.Parameters params, Camera camera){
+    final List<Camera.Size> supportedPreviewSizes = params.getSupportedPreviewSizes();
+    final Camera.Size selectedPreviewSize = supportedPreviewSizes.get(streamPrefs.getSizeIndex());
+    params.setPreviewSize(selectedPreviewSize.width, selectedPreviewSize.height);
+
+    List<Camera.Area> camera_areas = new ArrayList<Camera.Area>();
+   // Rect focusRect = calculateTapArea(event.getX(), event.getY(), 1f);
+   // Rect meteringRect = calculateTapArea(event.getX(), event.getY(), 1.5f);
+
+    camera_areas.add(new Camera.Area(new Rect(0,0,0,0),0));
+    params.setFocusAreas(camera_areas);
+
+    if (streamPrefs.useFlashLight())
+    {
+        params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
+    } // if
+    params.setWhiteBalance(streamPrefs.getWhitebalance());
+    if(params.isAutoWhiteBalanceLockSupported()){
+        params.setAutoWhiteBalanceLock(streamPrefs.isAuto_white_balance_lock());
+    }
+    String temp = params.get("iso");
+    if(temp!=null)
+        params.set("iso", streamPrefs.getIso());
+
+    temp = params.get("iso.speed");
+    if(temp!=null)
+        params.set("iso-speed", streamPrefs.getIso());
+
+    temp = params.get("fast-fps-mode");
+    if(temp!=null) {
+        params.set("fast-fps-mode", streamPrefs.getFast_fps_mode());
+    }
+    params.setFocusMode(streamPrefs.getFocus_mode());
+
+    if(params.isVideoStabilizationSupported()){
+        params.setVideoStabilization(streamPrefs.isImage_stabilization());
+    }
+
+    if(params.isAutoExposureLockSupported()){
+        if(streamPrefs.isAuto_exposure_lock()) {
+            camera.cancelAutoFocus();
+        }
+        params.setAutoExposureLock(streamPrefs.isAuto_exposure_lock() );
+        Log.d(TAG, "Camera parameters : setting auto-exposure-lock to " + streamPrefs.isAuto_exposure_lock());
+        Log.d(TAG, "Camera parameters : auto-exposure-lock set to " + params.getAutoExposureLock());
+    }else{
+        Log.d(TAG, "Camera parameters : auto-exposure-lock not supported.");
+    }
+    params.set("min-exposure-compensation",0);
+    params.set("max-exposure-compensation",0);
+
+    //params.setColorEffect(Camera.Parameters.Effe);
+
+    // Set Preview FPS range. The range with the greatest maximum
+    // is returned first.
+    final List<int[]> supportedPreviewFpsRanges = params.getSupportedPreviewFpsRange();
+    // XXX: However sometimes it returns null. This is a known bug
+    // https://code.google.com/p/android/issues/detail?id=6271
+    // In which case, we just don't set it.
+    if (supportedPreviewFpsRanges != null)
+    {
+        /*final int[] range = supportedPreviewFpsRanges.get(0);
+        params.setPreviewFpsRange(range[Camera.Parameters.PREVIEW_FPS_MIN_INDEX],
+                range[Camera.Parameters.PREVIEW_FPS_MAX_INDEX]);*/
+        params.set("preview-frame-rate", 30);
+        camera.setParameters(params);
+        //Log.i(TAG, "Camera parameters applied: " + params.flatten().replaceAll(";", ";\n"));
+        Log.i(TAG, "Camera parameters applied: " + camera.getParameters().flatten().replaceAll(";", ";\n"));
+
+    } // if
+
+}
     private final Camera.PreviewCallback mPreviewCallback = new Camera.PreviewCallback()
     {
         @Override
@@ -291,8 +365,15 @@ import android.view.SurfaceHolder;
             final Long timestamp = SystemClock.elapsedRealtime();
             final Message message = mWorkHandler.obtainMessage();
             message.what = MESSAGE_SEND_PREVIEW_FRAME;
+            ByteBuffer buffer = ByteBuffer.allocateDirect(4 * 262144);
+            buffer.put(data);
+            buffer.position(0);
+
             message.obj = new Object[]{ data, camera, timestamp };
             message.sendToTarget();
+            /*Camera.Parameters parameters = camera.getParameters();
+            parameters.setAutoExposureLock(true);
+            camera.setParameters(parameters);*/
         } // onPreviewFrame(byte[], Camera)
     }; // mPreviewCallback
 
@@ -332,6 +413,8 @@ import android.view.SurfaceHolder;
         camera.addCallbackBuffer(data);
    } // sendPreviewFrame(byte[], camera, long)
 
-
+    public Camera getCamera(){
+        return mCamera;
+    }
 } // class CameraStreamer
 

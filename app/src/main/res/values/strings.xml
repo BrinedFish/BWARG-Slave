@@ -52,5 +52,6 @@
     <string name="image_stabilization_checkBox">Stabilize image</string>
     <string name="auto_exposure_lock">Auto exposure lock</string>
     <string name="mode_label">Mode : </string>
+    <string name="fast_fps_mode_checkbox">Fast FPS mode (recommended)</string>
 </resources>
 

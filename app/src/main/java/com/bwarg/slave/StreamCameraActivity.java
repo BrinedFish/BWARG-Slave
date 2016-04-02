@@ -25,6 +25,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.hardware.Camera;
+import android.hardware.camera2.CameraCharacteristics;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 import android.net.wifi.WifiInfo;
@@ -86,11 +87,6 @@ public final class StreamCameraActivity extends Activity
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
-
-        Camera camera = Camera.open();
-        Camera.Parameters params = camera.getParameters();
-        Log.d(TAG, "Camera parameters : " + params.flatten().replaceAll(";", ";\n"));
-        camera.release();
 
         mPreviewDisplay = ((SurfaceView) findViewById(R.id.camera)).getHolder();
         mPreviewDisplay.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
@@ -200,6 +196,13 @@ public final class StreamCameraActivity extends Activity
 
         startActivityForResult(intent, REQUEST_SETTINGS);
     }
+    public void toggleExposureLock(View v) {
+        Camera cam = mCameraStreamer.getCamera();
+        Camera.Parameters params = cam.getParameters();
+        boolean exposureLocked = params.getAutoExposureLock();
+        params.setAutoExposureLock(!exposureLocked);
+        cam.setParameters(params);
+    }
 
     private final void updatePrefCacheAndUi(StreamPreferences streamPrefs)
     {
@@ -271,6 +274,7 @@ public final class StreamCameraActivity extends Activity
 
                     updatePrefCacheAndUi(streamPrefs);
                     tryStartCameraStreamer();
+
                 }
                 break;
         }
