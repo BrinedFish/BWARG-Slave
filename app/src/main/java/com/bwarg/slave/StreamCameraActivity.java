@@ -25,7 +25,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.hardware.Camera;
-import android.hardware.camera2.CameraCharacteristics;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 import android.net.wifi.WifiInfo;
@@ -207,7 +206,7 @@ public final class StreamCameraActivity extends Activity
     private final void updatePrefCacheAndUi(StreamPreferences streamPrefs)
     {
         this.streamPrefs = streamPrefs;
-        mIpAddressView.setText("http://" + mIpAddress + ":" + streamPrefs.getIp_port() + "/");
+        mIpAddressView.setText("http://" + mIpAddress + ":" + streamPrefs.getIpPort() + "/");
         if(mNsdManager!=null && mRegistrationListener!=null){
             try{
                 mNsdManager.unregisterService(mRegistrationListener);
@@ -299,7 +298,7 @@ public final class StreamCameraActivity extends Activity
         NsdServiceInfo serviceInfo = new NsdServiceInfo();
         serviceInfo.setServiceName(SERVICE_NAME + streamPrefs.getName());
         serviceInfo.setServiceType(SERVICE_TYPE);
-        serviceInfo.setPort(streamPrefs.getIp_port());
+        serviceInfo.setPort(streamPrefs.getIpPort());
         try {
             serviceInfo.setHost(InetAddress.getByName(getIP()));
         } catch (UnknownHostException e) {
