@@ -17,16 +17,13 @@ package com.bwarg.slave;
 
 import java.net.InetAddress;
 import java.net.NetworkInterface;
-import java.net.UnknownHostException;
 import java.util.Enumeration;
+import java.util.UUID;
 
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.hardware.Camera;
-import android.net.nsd.NsdManager;
-import android.net.nsd.NsdServiceInfo;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Bundle;
@@ -39,16 +36,23 @@ import android.view.View;
 import android.widget.ImageButton;
 import android.widget.TextView;
 
-import com.google.gson.Gson;
-
 import org.apache.http.conn.util.InetAddressUtils;
+
+import eu.hgross.blaubot.android.BlaubotAndroid;
+import eu.hgross.blaubot.android.BlaubotAndroidFactory;
+import eu.hgross.blaubot.core.IBlaubotDevice;
+import eu.hgross.blaubot.core.ILifecycleListener;
+import eu.hgross.blaubot.messaging.BlaubotMessage;
+import eu.hgross.blaubot.messaging.IBlaubotChannel;
+import eu.hgross.blaubot.messaging.IBlaubotMessageListener;
 
 public final class StreamCameraActivity extends Activity
         implements SurfaceHolder.Callback
 {
     private static final String TAG = StreamCameraActivity.class.getSimpleName();
+    private static final String TAG_BLAUBOT = TAG+"-BLAUBOT";
     private static final int REQUEST_SETTINGS = 1;
-    private static final String WAKE_LOCK_TAG = "peepers";
+    private static final String WAKE_LOCK_TAG = "bwarg-slave";
 
     private static final int DISCOVER_PORT_DEF = 8888;
 
@@ -60,17 +64,15 @@ public final class StreamCameraActivity extends Activity
 
     private String mIpAddress = "";
 
-    private StreamPreferences streamPrefs = new StreamPreferences();
+    private SlaveStreamPreferences streamPrefs = new SlaveStreamPreferences();
 
     private TextView mIpAddressView = null;
     private WakeLock mWakeLock = null;
 
     //Networking attributes
-    private static String SERVICE_NAME = "BWARG";
-    private static String SERVICE_TYPE = "_http._tcp.";
-    private NsdManager mNsdManager;
-    public static boolean USE_NSD_MANAGER = false;
-    private NsdManager.RegistrationListener mRegistrationListener;
+    private static final String APP_UUID_STRING = "52260110-f8f0-11e5-a837-0800200c9a66";
+    private static final int APP_PORT = 5606;
+    private BlaubotAndroid blaubot;
 
     //Lock physical keys attributes
     public static boolean LOCK_PHYS_KEYS = false;
@@ -106,16 +108,87 @@ public final class StreamCameraActivity extends Activity
                 (PowerManager) getSystemService(POWER_SERVICE);
         mWakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 WAKE_LOCK_TAG);
+        final UUID APP_UUID = UUID.fromString(APP_UUID_STRING);
+        blaubot = BlaubotAndroidFactory.createEthernetBlaubotWithBluetoothBeacon(APP_UUID, APP_PORT, tryGetIpV4InetAddress());
+        blaubot.startBlaubot();
+        blaubot.registerReceivers(this);
+        blaubot.setContext(this);
+        //blaubot.onResume(this);
+        final IBlaubotChannel channel = blaubot.createChannel((short)1);
+        channel.subscribe(new IBlaubotMessageListener() {
+            @Override
+            public void onMessage(BlaubotMessage message) {
+                // we got a message - our payload is a byte array
+                // deserialize
+                String msg = new String(message.getPayload());
+                //Structure of messages : HEADER_[fromID]XXX_[toID]XXX_DATA
+                String header = msg.substring(0,2);
+                int fromIDIndex = msg.indexOf("_[fromID]")+9;
+                int toIDIndex = msg.indexOf("_[toID]")+7;
+                int dataIndex = msg.indexOf("_[data]")+7;
 
-        if(USE_NSD_MANAGER){
-            mNsdManager = (NsdManager) getSystemService(Context.NSD_SERVICE);
-            registerService(DISCOVER_PORT_DEF);
-        }
-        /*if(netSTask !=null)
-            netSTask.closeNetworkService();
-        netSTask = new NetworkServerTask();
-        netSTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, "");*/
+                String fromID = msg.substring(fromIDIndex, toIDIndex-7);
+                String toID = msg.substring(toIDIndex, dataIndex-7);
+                String data = msg.substring(dataIndex);
 
+                switch(header){
+                    case "SSP" : //manage complete settings rewrite here
+                        if(toID.equals(blaubot.getOwnDevice().getUniqueDeviceID())) {
+                            SlaveStreamPreferences prefs = SlaveStreamPreferences.fromGson(data);
+                            updatePrefCacheAndUi(prefs);
+                            tryStartCameraStreamer();
+                        }
+                        break;
+                    case "AEL" :
+                        if(toID.equals(blaubot.getOwnDevice().getUniqueDeviceID())) {
+                            boolean lock = Boolean.parseBoolean(msg.substring(2));
+                            Camera.Parameters params = mCameraStreamer.getCamera().getParameters();
+                            params.setAutoExposureLock(lock);
+                            mCameraStreamer.getCamera().setParameters(params);
+                        }
+                        break;
+                    default : break;
+                }
+                Log.i(TAG_BLAUBOT, "Received from channel : " + msg);
+            }
+        });
+        blaubot.addLifecycleListener(new ILifecycleListener() {
+            @Override
+            public void onDisconnected() {
+                // THIS device disconnected from the network
+                Log.i(TAG_BLAUBOT, "Disconnected.");
+            }
+
+            @Override
+            public void onDeviceLeft(IBlaubotDevice blaubotDevice) {
+                // ANOTHER device disconnected from the network
+            }
+
+            @Override
+            public void onDeviceJoined(IBlaubotDevice blaubotDevice) {
+                // ANOTHER device connected to the network THIS device is on
+                channel.publish(("SSP" + streamPrefs.toGson()).getBytes());
+            }
+
+            @Override
+            public void onConnected() {
+                // THIS device connected to a network
+                // you can now subscribe to channels and use them:
+                channel.subscribe();
+                channel.publish(("SSP"+streamPrefs.toGson()).getBytes());
+                // onDeviceJoined(...) calls will follow for each OTHER device that was already connected
+            }
+
+            @Override
+            public void onPrinceDeviceChanged(IBlaubotDevice oldPrince, IBlaubotDevice newPrince) {
+                // if the network's king goes down, the prince will rule over the remaining peasants
+            }
+
+            @Override
+            public void onKingDeviceChanged(IBlaubotDevice oldKing, IBlaubotDevice newKing) {
+
+            }
+        });
     } // onCreate(Bundle)
 
     @Override
@@ -127,11 +200,11 @@ public final class StreamCameraActivity extends Activity
         updatePrefCacheAndUi(streamPrefs);
         tryStartCameraStreamer();
         mWakeLock.acquire();
-        if (mNsdManager != null) {
-            registerService(DISCOVER_PORT_DEF);
-        }
-        /*if(netSTask !=null)
-            netSTask.closeNetworkService();*/
+
+        blaubot.startBlaubot();
+        blaubot.registerReceivers(this);
+        blaubot.setContext(this);
+        //blaubot.onResume(this);
     } // onResume()
 
     @Override
@@ -142,13 +215,12 @@ public final class StreamCameraActivity extends Activity
         mRunning = false;
 
         ensureCameraStreamerStopped();
-        if (mNsdManager != null) {
-            mNsdManager.unregisterService(mRegistrationListener);
-        }
-        /*if(netSTask !=null)
-            netSTask.closeNetworkService();*/
+
         super.onPause();
         unlockPhysKeys();
+
+        blaubot.unregisterReceivers(this);
+        blaubot.onPause(this);
     } // onPause()
 
     @Override
@@ -190,10 +262,9 @@ public final class StreamCameraActivity extends Activity
 
     public void openSettings(View v){
         Intent intent = new Intent(this, SlaveSettingsActivity.class);
-        Gson gson = new Gson();
-        String gsonString =  gson.toJson(streamPrefs);
-        Log.d(TAG, "GSON string given to settings : "+gsonString);
-        intent.putExtra("stream_prefs", gsonString);
+
+        Log.d(TAG, "GSON string given to settings : " + streamPrefs.toGson());
+        intent.putExtra("stream_prefs", streamPrefs.toGson());
 
         startActivityForResult(intent, REQUEST_SETTINGS);
     }
@@ -209,26 +280,11 @@ public final class StreamCameraActivity extends Activity
         cam.setParameters(params);
     }
 
-    private final void updatePrefCacheAndUi(StreamPreferences streamPrefs)
+    private final void updatePrefCacheAndUi(SlaveStreamPreferences streamPrefs)
     {
         this.streamPrefs = streamPrefs;
+        streamPrefs.setIpAdress(tryGetIpV4Address());
         mIpAddressView.setText("http://" + mIpAddress + ":" + streamPrefs.getIpPort() + "/");
-        if(mNsdManager!=null && mRegistrationListener!=null){
-            try{
-                mNsdManager.unregisterService(mRegistrationListener);
-                mRegistrationListener=null;
-            }catch (IllegalArgumentException iae){
-                iae.printStackTrace();
-                mRegistrationListener= null;
-                registerService(DISCOVER_PORT_DEF);
-            }
-
-        }
-        /*Camera cam = mCameraStreamer.getCamera();
-        Camera.Parameters params = cam.getParameters();
-        boolean exposureLocked = params.getAutoExposureLock();
-        exposure_lock_button = (ImageButton) findViewById(R.id.auto_exposure_lock_button);
-        exposure_lock_button.setImageResource(exposureLocked ? R.drawable.exposure_unlocked : R.drawable.exposure_locked);*/
 
         if(LOCK_PHYS_KEYS){
             lockPhysKeys();
@@ -275,8 +331,8 @@ public final class StreamCameraActivity extends Activity
             case REQUEST_SETTINGS:
                 if (resultCode == Activity.RESULT_OK) {
                     //left cam
-                    Gson gson = new Gson();
-                    streamPrefs = gson.fromJson(data.getStringExtra("stream_prefs"), StreamPreferences.class);
+                    streamPrefs = SlaveStreamPreferences.fromGson(data.getStringExtra("stream_prefs"));
+                    streamPrefs.setIpAdress(tryGetIpV4Address());
 
                     SharedPreferences preferences = getSharedPreferences("SAVED_VALUES", MODE_PRIVATE);
                     SharedPreferences.Editor editor = preferences.edit();
@@ -293,10 +349,7 @@ public final class StreamCameraActivity extends Activity
 
     @Override
     protected void onDestroy() {
-        if (mNsdManager != null) {
-            mNsdManager.unregisterService(mRegistrationListener);
-            mRegistrationListener = null;
-        }
+        blaubot.stopBlaubot();
         SharedPreferences preferences = getSharedPreferences("SAVED_VALUES", MODE_PRIVATE);
         SharedPreferences.Editor editor = preferences.edit();
         savePreferences(editor, streamPrefs);
@@ -304,54 +357,6 @@ public final class StreamCameraActivity extends Activity
         unlockPhysKeys();
         homeKeyLocker=null;
         super.onDestroy();
-    }
-
-    public void registerService(int port) {
-        NsdServiceInfo serviceInfo = new NsdServiceInfo();
-        serviceInfo.setServiceName(SERVICE_NAME + streamPrefs.getName());
-        serviceInfo.setServiceType(SERVICE_TYPE);
-        serviceInfo.setPort(streamPrefs.getIpPort());
-        try {
-            serviceInfo.setHost(InetAddress.getByName(getIP()));
-        } catch (UnknownHostException e) {
-            e.printStackTrace();
-        }
-
-        mRegistrationListener = new NsdManager.RegistrationListener() {
-
-            @Override
-            public void onServiceRegistered(NsdServiceInfo nsdServiceInfo) {
-                String mServiceName = nsdServiceInfo.getServiceName();
-                SERVICE_NAME = mServiceName;
-                Log.d(TAG, "Registered name : " + mServiceName);
-            }
-
-            @Override
-            public void onRegistrationFailed(NsdServiceInfo serviceInfo,
-                                             int errorCode) {
-                // Registration failed! Put debugging code here to determine
-                // why.
-            }
-
-            @Override
-            public void onServiceUnregistered(NsdServiceInfo serviceInfo) {
-                // Service has been unregistered. This only happens when you
-                // call
-                // NsdManager.unregisterService() and pass in this listener.
-                Log.d(TAG,
-                        "Service Unregistered : " + serviceInfo.getServiceName());
-            }
-
-            @Override
-            public void onUnregistrationFailed(NsdServiceInfo serviceInfo,
-                                               int errorCode) {
-                // Unregistration failed. Put debugging code here to determine
-                // why.
-            }
-        };
-        mNsdManager.registerService(serviceInfo,
-                NsdManager.PROTOCOL_DNS_SD,
-                mRegistrationListener);
     }
 
     public String getIP(){
@@ -368,34 +373,53 @@ public final class StreamCameraActivity extends Activity
 
     }
 
-    private StreamPreferences loadPreferences(SharedPreferences prefs) {
-        Gson gson = new Gson();
-        StreamPreferences temp = gson.fromJson(prefs.getString("stream_prefs", StreamPreferences.defaultGsonString()), StreamPreferences.class);
+    private SlaveStreamPreferences loadPreferences(SharedPreferences prefs) {
+        SlaveStreamPreferences temp = SlaveStreamPreferences.fromGson(prefs.getString("stream_prefs", SlaveStreamPreferences.defaultGsonString()));
+        temp.setIpAdress(tryGetIpV4Address());
         LOCK_PHYS_KEYS = prefs.getBoolean("lock_phys_keys", false);
-        Log.d("MJPEG_Cam", "StreamPrefs" + prefs.getString("stream_prefs", StreamPreferences.defaultGsonString()) + " loaded at startup.");
+        Log.d("MJPEG_Cam", "StreamPrefs" + prefs.getString("stream_prefs", SlaveStreamPreferences.defaultGsonString()) + " loaded at startup.");
         return temp;
     }
-    private void savePreferences(SharedPreferences.Editor editor, StreamPreferences streamPrefs){
-        Gson gson = new Gson();
-        editor.putString("stream_prefs", gson.toJson(streamPrefs));
+    private void savePreferences(SharedPreferences.Editor editor, SlaveStreamPreferences streamPrefs){
+        editor.putString("stream_prefs", streamPrefs.toGson());
         editor.putBoolean("lock_phys_keys", LOCK_PHYS_KEYS);
     }
-   /* protected void setLockPhysKeys(boolean lock){
-        this.LOCK_PHYS_KEYS = lock;
-        if(lock){
-            lockPhysKeys();
-        }else{
-            unlockPhysKeys();
-        }
-    }
-    protected boolean isLockingPhysKeys(){
-        return LOCK_PHYS_KEYS;
-    }*/
     private void lockPhysKeys(){
         homeKeyLocker.lock(this);
     }
     private void unlockPhysKeys(){
         homeKeyLocker.unlock();
     }
+    private static InetAddress tryGetIpV4InetAddress()
+    {
+        try
+        {
+            final Enumeration<NetworkInterface> en =
+                    NetworkInterface.getNetworkInterfaces();
+            while (en.hasMoreElements())
+            {
+                final NetworkInterface intf = en.nextElement();
+                final Enumeration<InetAddress> enumIpAddr =
+                        intf.getInetAddresses();
+                while (enumIpAddr.hasMoreElements())
+                {
+                    final  InetAddress inetAddress = enumIpAddr.nextElement();
+                    if (!inetAddress.isLoopbackAddress())
+                    {
+                        final String addr = inetAddress.getHostAddress().toUpperCase();
+                        if (InetAddressUtils.isIPv4Address(addr))
+                        {
+                            return inetAddress;
+                        }
+                    } // if
+                } // while
+            } // for
+        } // try
+        catch (final Exception e)
+        {
+            // Ignore
+        } // catch
+        return null;
+    } // tryGetIpV4Address()
 } // class StreamCameraActivity
 

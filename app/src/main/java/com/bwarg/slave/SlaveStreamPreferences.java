@@ -2,28 +2,39 @@ package com.bwarg.slave;
 
 import com.google.gson.Gson;
 
+import java.util.ArrayList;
 
 /**
  * Created by LM on 10.02.2016.
  */
-public class StreamPreferences {
+public class SlaveStreamPreferences {
     public final static String UNKNOWN_NAME = "(Unknown)";
+    public final static  int SIDE_LEFT = 0;
+    public final static int SIDE_RIGHT = 1;
+
+    private String ip_adress = "127.0.0.1";
 
     private int ip_port = 8080;
     private String name = UNKNOWN_NAME;
     private int camIndex =0;
     private int sizeIndex = 0;
+    private ArrayList<String> resolutions_supported = new ArrayList<>();
     private boolean useFlashLight = false;
     private int quality = 40;
 
     private boolean auto_exposure_lock = false;
+    private boolean auto_exposure_lock_supported = false;
     private boolean auto_white_balance_lock = false;
+    private boolean auto_white_balance_lock_supported = false;
     private String white_balance = "auto";
     private String focus_mode = "auto";
     private boolean image_stabilization = false;
+    private boolean image_stabilization_supported = false;
     private String iso = "auto";
-    private String iso_speed = "";
     private int fast_fps_mode = 0;
+    private boolean fast_fps_mode_supported = false;
+
+    private int preferred_side = SIDE_LEFT;
 
     public int getIpPort() {
         return ip_port;
@@ -131,7 +142,72 @@ public class StreamPreferences {
 
     public static String defaultGsonString(){
         Gson gson = new Gson();
-        return gson.toJson(new StreamPreferences());
+        return gson.toJson(new SlaveStreamPreferences());
+    }
+    public String toGson(){
+        Gson gson = new Gson();
+        return gson.toJson(this);
+    }
+    public static SlaveStreamPreferences fromGson(String s){
+        Gson gson = new Gson();
+        return gson.fromJson(s, SlaveStreamPreferences.class);
     }
 
+    public boolean isAutoExposureLockSupported() {
+        return auto_exposure_lock_supported;
+    }
+
+    public void setAutoExposureLockSupported(boolean auto_exposure_lock_supported) {
+        this.auto_exposure_lock_supported = auto_exposure_lock_supported;
+    }
+
+    public boolean isAutoWhiteBalanceLockSupported() {
+        return auto_white_balance_lock_supported;
+    }
+
+    public void setAutoWhiteBalanceLockSupported(boolean auto_white_balance_lock_supported) {
+        this.auto_white_balance_lock_supported = auto_white_balance_lock_supported;
+    }
+
+    public boolean isImageStabilizationSupported() {
+        return image_stabilization_supported;
+    }
+
+    public void setImageStabilizationSupported(boolean image_stabilization_supported) {
+        this.image_stabilization_supported = image_stabilization_supported;
+    }
+
+    public boolean isFastFpsModeSupported() {
+        return fast_fps_mode_supported;
+    }
+
+    public void setFastFpsModeSupported(boolean fast_fps_mode_supported) {
+        this.fast_fps_mode_supported = fast_fps_mode_supported;
+    }
+    public void addResolutionSupported(String res){
+        resolutions_supported.add(res);
+    }
+    public ArrayList<String> getResolutionsSupported() {
+        return resolutions_supported;
+    }
+
+    public void setResolutionsSupported(ArrayList<String> resolutions_supported) {
+        this.resolutions_supported = resolutions_supported;
+    }
+
+    public int getPreferredSide() {
+        return preferred_side;
+    }
+
+    public void setPreferredSide(int preferred_side) {
+        this.preferred_side = preferred_side;
+    }
+
+    public String getIpAdress() {
+        return ip_adress;
+    }
+
+    public void setIpAdress(String ip_adress) {
+        this.ip_adress = ip_adress;
+    }
 }

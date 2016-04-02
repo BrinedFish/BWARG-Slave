@@ -38,7 +38,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
     private CheckBox stabilize_image_checkBox;
     private CheckBox fast_fps_mode_checkBox;
 
-    private StreamPreferences streamPrefs = new StreamPreferences();
+    private SlaveStreamPreferences streamPrefs = new SlaveStreamPreferences();
 
     Button settings_done;
 
@@ -52,7 +52,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
 
         Bundle extras = getIntent().getExtras();
         Gson gson = new Gson();
-        streamPrefs = gson.fromJson(extras.getString("stream_prefs"), StreamPreferences.class);
+        streamPrefs = gson.fromJson(extras.getString("stream_prefs"), SlaveStreamPreferences.class);
 
         resolution_spinner = (Spinner) findViewById(R.id.resolution_spinner);
 
@@ -174,7 +174,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
                 }
         );
     }
-    private void fillUI(StreamPreferences prefs){
+    private void fillUI(SlaveStreamPreferences prefs){
         final Camera camera = Camera.open(prefs.getCamIndex());
         final Camera.Parameters params = camera.getParameters();
         camera.release();
@@ -213,7 +213,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
         }
         initSpinners(prefs, params);
     }
-    private void initSpinners(StreamPreferences prefs, Camera.Parameters params){
+    private void initSpinners(SlaveStreamPreferences prefs, Camera.Parameters params){
         //PREVIEW SIZES
         final List<Camera.Size> supportedPreviewSizes = params.getSupportedPreviewSizes();
         ArrayList<String> stringSupportedPreviewSizeList = new ArrayList<>();

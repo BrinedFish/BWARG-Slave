@@ -24,7 +24,7 @@ import com.google.gson.Gson;
 public class SlaveSettingsActivity extends ActionBarActivity {
     private static final String TAG = "SETTINGS";
 
-    private StreamPreferences streamPrefs = new StreamPreferences();
+    private SlaveStreamPreferences streamPrefs = new SlaveStreamPreferences();
 
     RadioGroup camera_group;
     SwitchCompat flash_switch;
@@ -46,7 +46,7 @@ public class SlaveSettingsActivity extends ActionBarActivity {
 
         Bundle extras = getIntent().getExtras();
         Gson gson = new Gson();
-        streamPrefs = gson.fromJson(extras.getString("stream_prefs"), StreamPreferences.class);
+        streamPrefs = gson.fromJson(extras.getString("stream_prefs"), SlaveStreamPreferences.class);
 
         camera_group = (RadioGroup) findViewById(R.id.camera_radiogroup);
         flash_switch = (SwitchCompat) findViewById(R.id.flash_switch);
@@ -104,7 +104,7 @@ public class SlaveSettingsActivity extends ActionBarActivity {
                         if(!"".equals(s)){
                             streamPrefs.setName(s);
                         }else{
-                            streamPrefs.setName(StreamPreferences.UNKNOWN_NAME);
+                            streamPrefs.setName(SlaveStreamPreferences.UNKNOWN_NAME);
                         }
                         s = port_input.getText().toString();
                         if (!"".equals(s)) {
@@ -123,7 +123,7 @@ public class SlaveSettingsActivity extends ActionBarActivity {
                 }
         );
     }
-    private void fillUI(StreamPreferences prefs){
+    private void fillUI(SlaveStreamPreferences prefs){
         if(prefs.getCamIndex() == 0){
             camera_group.check(R.id.camera_0);
         }else if(prefs.getCamIndex() == 1){
@@ -141,7 +141,7 @@ public class SlaveSettingsActivity extends ActionBarActivity {
             case REQUEST_SETTINGS:
                 if (resultCode == Activity.RESULT_OK) {
                     Gson gson = new Gson();
-                    streamPrefs = gson.fromJson(data.getStringExtra("stream_prefs"), StreamPreferences.class);
+                    streamPrefs = gson.fromJson(data.getStringExtra("stream_prefs"), SlaveStreamPreferences.class);
                     fillUI(streamPrefs);
                 }
                 break;

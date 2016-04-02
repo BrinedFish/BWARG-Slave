@@ -24,6 +24,7 @@ import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
+import android.os.Build;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Handler;
@@ -51,7 +52,7 @@ import android.view.SurfaceHolder;
     private final int mPort;
     private final int mPreviewSizeIndex;
     private final int mJpegQuality;*/
-    private StreamPreferences streamPrefs = new StreamPreferences();
+    private SlaveStreamPreferences streamPrefs = new SlaveStreamPreferences();
     private final SurfaceHolder mPreviewDisplay;
 
     private boolean mRunning = false;
@@ -69,7 +70,7 @@ import android.view.SurfaceHolder;
     private long mNumFrames = 0L;
     private long mLastTimestamp = Long.MIN_VALUE;
 
-    /* package */ CameraStreamer(final StreamPreferences streamPrefs, final SurfaceHolder previewDisplay)
+    /* package */ CameraStreamer(final SlaveStreamPreferences streamPrefs, final SurfaceHolder previewDisplay)
     {
         super();
 
@@ -286,12 +287,17 @@ private void applyImageSettings(Camera.Parameters params, Camera camera){
     final List<Camera.Size> supportedPreviewSizes = params.getSupportedPreviewSizes();
     final Camera.Size selectedPreviewSize = supportedPreviewSizes.get(streamPrefs.getSizeIndex());
     params.setPreviewSize(selectedPreviewSize.width, selectedPreviewSize.height);
+    ArrayList<String> stringSupportedPreviewSizeList = new ArrayList<>();
+    for(Camera.Size s : supportedPreviewSizes) {
+        stringSupportedPreviewSizeList.add(s.width + "x" + s.height);
+    }
+    streamPrefs.setResolutionsSupported(stringSupportedPreviewSizeList);
 
     List<Camera.Area> camera_areas = new ArrayList<Camera.Area>();
    // Rect focusRect = calculateTapArea(event.getX(), event.getY(), 1f);
    // Rect meteringRect = calculateTapArea(event.getX(), event.getY(), 1.5f);
 
-    camera_areas.add(new Camera.Area(new Rect(0,0,0,0),0));
+    camera_areas.add(new Camera.Area(new Rect(0, 0, 0, 0), 0));
     params.setFocusAreas(camera_areas);
 
     if (streamPrefs.useFlashLight())
@@ -299,6 +305,7 @@ private void applyImageSettings(Camera.Parameters params, Camera camera){
         params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
     } // if
     params.setWhiteBalance(streamPrefs.getWhiteBalance());
+    streamPrefs.setAutoWhiteBalanceLockSupported(params.isAutoWhiteBalanceLockSupported());
     if(params.isAutoWhiteBalanceLockSupported()){
         params.setAutoWhiteBalanceLock(streamPrefs.getAutoWhiteBalanceLock());
     }
@@ -311,22 +318,23 @@ private void applyImageSettings(Camera.Parameters params, Camera camera){
         params.set("iso-speed", streamPrefs.getIso());
 
     temp = params.get("fast-fps-mode");
+    streamPrefs.setFastFpsModeSupported(temp!=null);
     if(temp!=null) {
         params.set("fast-fps-mode", streamPrefs.getFastFpsMode());
     }
     params.setFocusMode(streamPrefs.getFocusMode());
 
+    streamPrefs.setImageStabilizationSupported(params.isVideoStabilizationSupported());
     if(params.isVideoStabilizationSupported()){
         params.setVideoStabilization(streamPrefs.getImageStabilization());
     }
 
+    streamPrefs.setAutoExposureLockSupported(params.isAutoExposureLockSupported() && !(Build.MANUFACTURER+Build.MODEL).equals("samsungGT-I9300"));
     if(params.isAutoExposureLockSupported()){
         if(streamPrefs.getAutoExposureLock()) {
             camera.cancelAutoFocus();
         }
-        params.setAutoExposureLock(streamPrefs.getAutoExposureLock() );
-        Log.d(TAG, "Camera parameters : setting auto-exposure-lock to " + streamPrefs.getAutoExposureLock());
-        Log.d(TAG, "Camera parameters : auto-exposure-lock set to " + params.getAutoExposureLock());
+        params.setAutoExposureLock(streamPrefs.getAutoExposureLock());
     }else{
         Log.d(TAG, "Camera parameters : auto-exposure-lock not supported.");
     }
