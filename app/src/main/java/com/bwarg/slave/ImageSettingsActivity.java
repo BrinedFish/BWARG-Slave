@@ -4,7 +4,6 @@ import android.content.Intent;
 import android.hardware.Camera;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
-import android.support.v7.widget.SwitchCompat;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -12,8 +11,6 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
-import android.widget.EditText;
-import android.widget.RadioGroup;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -102,14 +99,14 @@ public class ImageSettingsActivity  extends ActionBarActivity {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (auto_white_lock_checkBox.equals((CheckBox) buttonView))
-                    streamPrefs.setAuto_white_balance_lock(isChecked);
+                    streamPrefs.setAutoWhiteBalanceLock(isChecked);
             }
         });
         white_balance_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             public void onItemSelected(AdapterView<?> parent, View viw, int arg2, long arg3) {
                 Spinner spinner = (Spinner) parent;
                 if (white_balance_spinner.equals(spinner))
-                    streamPrefs.setWhitebalance((String) spinner.getSelectedItem());
+                    streamPrefs.setWhiteBalance((String) spinner.getSelectedItem());
             }
 
             public void onNothingSelected(AdapterView<?> parent) {
@@ -119,7 +116,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (auto_exposure_lock_checkBoc.equals((CheckBox) buttonView))
-                    streamPrefs.setAuto_exposure_lock(isChecked);
+                    streamPrefs.setAutoExposureLock(isChecked);
             }
         });
         iso_spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -136,7 +133,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
             public void onItemSelected(AdapterView<?> parent, View viw, int arg2, long arg3) {
                 Spinner spinner = (Spinner) parent;
                 if (focus_mode_spinner.equals(spinner))
-                    streamPrefs.setFocus_mode((String) spinner.getSelectedItem());
+                    streamPrefs.setFocusMode((String) spinner.getSelectedItem());
             }
 
             public void onNothingSelected(AdapterView<?> parent) {
@@ -146,7 +143,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
             @Override
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                 if (stabilize_image_checkBox.equals((CheckBox) buttonView))
-                    streamPrefs.setImage_stabilization(isChecked);
+                    streamPrefs.setImageStabilization(isChecked);
             }
         });
         fast_fps_mode_checkBox.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -156,7 +153,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
                     int val = 0;
                     if (isChecked)
                         val = 1;
-                    streamPrefs.setFast_fps_mode(val);
+                    streamPrefs.setFastFpsMode(val);
                 }
             }
         });
@@ -186,20 +183,20 @@ public class ImageSettingsActivity  extends ActionBarActivity {
 
         auto_white_lock_checkBox.setEnabled(params.isAutoWhiteBalanceLockSupported());
         if(auto_white_lock_checkBox.isEnabled()) {
-            auto_white_lock_checkBox.setChecked(prefs.isAuto_white_balance_lock());
+            auto_white_lock_checkBox.setChecked(prefs.getAutoWhiteBalanceLock());
         }
         auto_exposure_lock_checkBoc.setEnabled(params.isAutoExposureLockSupported());
         if(auto_exposure_lock_checkBoc.isEnabled()) {
-            auto_exposure_lock_checkBoc.setChecked(prefs.isAuto_exposure_lock());
+            auto_exposure_lock_checkBoc.setChecked(prefs.getAutoExposureLock());
         }
         stabilize_image_checkBox.setEnabled(params.isVideoStabilizationSupported());
         if(stabilize_image_checkBox.isEnabled()) {
-            stabilize_image_checkBox.setChecked(prefs.isImage_stabilization());
+            stabilize_image_checkBox.setChecked(prefs.getImageStabilization());
         }
        String fastFPSModeSupported = params.get("fast-fps-mode");
         fast_fps_mode_checkBox.setEnabled(fastFPSModeSupported != null);
         if(fast_fps_mode_checkBox.isEnabled()) {
-            fast_fps_mode_checkBox.setChecked(streamPrefs.getFast_fps_mode() == 1);
+            fast_fps_mode_checkBox.setChecked(streamPrefs.getFastFpsMode() == 1);
         }
         initSpinners(prefs, params);
     }
@@ -220,7 +217,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
         ArrayAdapter<String> whiteAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item, supportedWhiteModes);
         whiteAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         white_balance_spinner.setAdapter(whiteAdapter);
-        white_balance_spinner.setSelection(supportedWhiteModes.indexOf(prefs.getWhitebalance()));
+        white_balance_spinner.setSelection(supportedWhiteModes.indexOf(prefs.getWhiteBalance()));
 
         //ISO MODE
         String isoModesString = params.get("iso-values");
@@ -258,7 +255,7 @@ public class ImageSettingsActivity  extends ActionBarActivity {
         ArrayAdapter<String> focusAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item, supportedFocusModes);
         focusAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         focus_mode_spinner.setAdapter(focusAdapter);
-        focus_mode_spinner.setSelection(supportedFocusModes.indexOf(prefs.getFocus_mode()));
+        focus_mode_spinner.setSelection(supportedFocusModes.indexOf(prefs.getFocusMode()));
 
 
     }

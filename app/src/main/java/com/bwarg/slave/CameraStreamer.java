@@ -21,12 +21,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.graphics.ImageFormat;
-import android.graphics.Matrix;
 import android.graphics.Rect;
-import android.graphics.RectF;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
-import android.opengl.GLES20;
 import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Handler;
@@ -218,7 +215,7 @@ import android.view.SurfaceHolder;
         // the uncompressed image.
         mJpegOutputStream = new MemoryOutputStream(mPreviewBufferSize);
 
-        final MJpegHttpStreamer streamer = new MJpegHttpStreamer(streamPrefs.getIp_port(), mPreviewBufferSize);
+        final MJpegHttpStreamer streamer = new MJpegHttpStreamer(streamPrefs.getIpPort(), mPreviewBufferSize);
         streamer.start();
 
         synchronized (mLock)
@@ -301,9 +298,9 @@ private void applyImageSettings(Camera.Parameters params, Camera camera){
     {
         params.setFlashMode(Camera.Parameters.FLASH_MODE_TORCH);
     } // if
-    params.setWhiteBalance(streamPrefs.getWhitebalance());
+    params.setWhiteBalance(streamPrefs.getWhiteBalance());
     if(params.isAutoWhiteBalanceLockSupported()){
-        params.setAutoWhiteBalanceLock(streamPrefs.isAuto_white_balance_lock());
+        params.setAutoWhiteBalanceLock(streamPrefs.getAutoWhiteBalanceLock());
     }
     String temp = params.get("iso");
     if(temp!=null)
@@ -315,20 +312,20 @@ private void applyImageSettings(Camera.Parameters params, Camera camera){
 
     temp = params.get("fast-fps-mode");
     if(temp!=null) {
-        params.set("fast-fps-mode", streamPrefs.getFast_fps_mode());
+        params.set("fast-fps-mode", streamPrefs.getFastFpsMode());
     }
-    params.setFocusMode(streamPrefs.getFocus_mode());
+    params.setFocusMode(streamPrefs.getFocusMode());
 
     if(params.isVideoStabilizationSupported()){
-        params.setVideoStabilization(streamPrefs.isImage_stabilization());
+        params.setVideoStabilization(streamPrefs.getImageStabilization());
     }
 
     if(params.isAutoExposureLockSupported()){
-        if(streamPrefs.isAuto_exposure_lock()) {
+        if(streamPrefs.getAutoExposureLock()) {
             camera.cancelAutoFocus();
         }
-        params.setAutoExposureLock(streamPrefs.isAuto_exposure_lock() );
-        Log.d(TAG, "Camera parameters : setting auto-exposure-lock to " + streamPrefs.isAuto_exposure_lock());
+        params.setAutoExposureLock(streamPrefs.getAutoExposureLock() );
+        Log.d(TAG, "Camera parameters : setting auto-exposure-lock to " + streamPrefs.getAutoExposureLock());
         Log.d(TAG, "Camera parameters : auto-exposure-lock set to " + params.getAutoExposureLock());
     }else{
         Log.d(TAG, "Camera parameters : auto-exposure-lock not supported.");
