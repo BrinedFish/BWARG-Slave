@@ -1,7 +1,5 @@
 package com.bwarg.slave;
 
-import android.hardware.Camera;
-
 import com.google.gson.Gson;
 
 
@@ -10,8 +8,6 @@ import com.google.gson.Gson;
  */
 public class StreamPreferences {
     public final static String UNKNOWN_NAME = "(Unknown)";
-    /*private int captureWidth = 640;
-    private int captureHeight = 480;*/
 
     private int ip_port = 8080;
     private String name = UNKNOWN_NAME;
@@ -22,18 +18,18 @@ public class StreamPreferences {
 
     private boolean auto_exposure_lock = false;
     private boolean auto_white_balance_lock = false;
-    private String whitebalance = "auto";
+    private String white_balance = "auto";
     private String focus_mode = "auto";
     private boolean image_stabilization = false;
     private String iso = "auto";
     private String iso_speed = "";
     private int fast_fps_mode = 0;
 
-    public int getIp_port() {
+    public int getIpPort() {
         return ip_port;
     }
 
-    public void setIp_port(int ip_port) {
+    public void setIpPort(int ip_port) {
         this.ip_port = ip_port;
     }
 
@@ -69,39 +65,35 @@ public class StreamPreferences {
         this.quality = quality;
     }
 
-    public boolean isUseFlashLight() {
-        return useFlashLight;
-    }
-
-    public boolean isAuto_exposure_lock() {
+    public boolean getAutoExposureLock() {
         return auto_exposure_lock;
     }
 
-    public void setAuto_exposure_lock(boolean auto_exposure_lock) {
+    public void setAutoExposureLock(boolean auto_exposure_lock) {
         this.auto_exposure_lock = auto_exposure_lock;
     }
 
-    public boolean isAuto_white_balance_lock() {
+    public boolean getAutoWhiteBalanceLock() {
         return auto_white_balance_lock;
     }
 
-    public void setAuto_white_balance_lock(boolean auto_white_balance_lock) {
+    public void setAutoWhiteBalanceLock(boolean auto_white_balance_lock) {
         this.auto_white_balance_lock = auto_white_balance_lock;
     }
 
-    public String getFocus_mode() {
+    public String getFocusMode() {
         return focus_mode;
     }
 
-    public void setFocus_mode(String focus_mode) {
+    public void setFocusMode(String focus_mode) {
         this.focus_mode = focus_mode;
     }
 
-    public boolean isImage_stabilization() {
+    public boolean getImageStabilization() {
         return image_stabilization;
     }
 
-    public void setImage_stabilization(boolean image_stabilization) {
+    public void setImageStabilization(boolean image_stabilization) {
         this.image_stabilization = image_stabilization;
     }
 
@@ -113,12 +105,12 @@ public class StreamPreferences {
         this.iso = iso;
     }
 
-    public String getWhitebalance() {
-        return whitebalance;
+    public String getWhiteBalance() {
+        return white_balance;
     }
 
-    public void setWhitebalance(String whitebalance) {
-        this.whitebalance = whitebalance;
+    public void setWhiteBalance(String whitebalance) {
+        this.white_balance = whitebalance;
     }
 
     public int getSizeIndex() {
@@ -129,11 +121,11 @@ public class StreamPreferences {
         this.sizeIndex = sizeIndex;
     }
 
-    public int getFast_fps_mode() {
+    public int getFastFpsMode() {
         return fast_fps_mode;
     }
 
-    public void setFast_fps_mode(int fast_fps_mode) {
+    public void setFastFpsMode(int fast_fps_mode) {
         this.fast_fps_mode = fast_fps_mode;
     }
 
