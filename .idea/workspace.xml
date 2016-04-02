@@ -45,15 +45,15 @@
   </component>
   <component name="FileEditorManager">
     <leaf>
-      <file leaf-file-name="CameraStreamer.java" pinned="false" current-in-tab="true">
+      <file leaf-file-name="CameraStreamer.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/CameraStreamer.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.6907776">
-              <caret line="247" column="0" selection-start-line="247" selection-start-column="0" selection-end-line="247" selection-end-column="0" />
+            <state vertical-scroll-proportion="0.0">
+              <caret line="244" column="0" selection-start-line="244" selection-start-column="0" selection-end-line="244" selection-end-column="0" />
               <folding>
                 <element signature="imports" expanded="true" />
-                <element signature="e#15586#15587#0" expanded="true" />
-                <element signature="e#15616#15617#0" expanded="true" />
+                <element signature="e#15484#15485#0" expanded="true" />
+                <element signature="e#15514#15515#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -96,19 +96,22 @@
         <entry file="file://$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/ImageSettingsActivity.java">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="39" column="45" selection-start-line="39" selection-start-column="21" selection-end-line="39" selection-end-column="45" />
+              <caret line="36" column="45" selection-start-line="36" selection-start-column="21" selection-end-line="36" selection-end-column="45" />
               <folding />
             </state>
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="StreamPreferences.java" pinned="false" current-in-tab="false">
+      <file leaf-file-name="StreamPreferences.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/StreamPreferences.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.0">
-              <caret line="131" column="35" selection-start-line="131" selection-start-column="35" selection-end-line="131" selection-end-column="35" />
+            <state vertical-scroll-proportion="0.9375">
+              <caret line="137" column="0" selection-start-line="137" selection-start-column="0" selection-end-line="137" selection-end-column="0" />
               <folding>
-                <element signature="e#3036#3037#0" expanded="true" />
+                <element signature="e#1435#1436#0" expanded="true" />
+                <element signature="e#1473#1474#0" expanded="true" />
+                <element signature="e#2802#2803#0" expanded="true" />
+                <element signature="e#2838#2839#0" expanded="true" />
               </folding>
             </state>
           </provider>
@@ -118,9 +121,9 @@
         <entry file="file://$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/StreamCameraActivity.java">
           <provider selected="true" editor-type-id="text-editor">
             <state vertical-scroll-proportion="0.0">
-              <caret line="176" column="30" selection-start-line="176" selection-start-column="30" selection-end-line="176" selection-end-column="30" />
+              <caret line="175" column="30" selection-start-line="175" selection-start-column="30" selection-end-line="175" selection-end-column="30" />
               <folding>
-                <element signature="e#0#13464#0" expanded="true" />
+                <element signature="e#0#13407#0" expanded="true" />
                 <element signature="imports" expanded="true" />
               </folding>
             </state>
@@ -1590,13 +1593,13 @@
         <option value="$PROJECT_DIR$/app/src/main/res/layout/settings.xml" />
         <option value="$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/SlaveSettingsActivity.java" />
         <option value="$PROJECT_DIR$/app/src/main/AndroidManifest.xml" />
-        <option value="$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/StreamPreferences.java" />
         <option value="$PROJECT_DIR$/app/src/main/res/values/strings.xml" />
         <option value="$PROJECT_DIR$/app/src/main/res/layout/image_settings.xml" />
         <option value="$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/ImageSettingsActivity.java" />
         <option value="$PROJECT_DIR$/app/src/main/res/layout/main.xml" />
         <option value="$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/StreamCameraActivity.java" />
         <option value="$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/CameraStreamer.java" />
+        <option value="$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/StreamPreferences.java" />
       </list>
     </option>
   </component>
@@ -2050,7 +2053,7 @@
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.35697675" sideWeight="0.50643086" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Application Servers" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="8" side_tool="false" content_ui="tabs" />
       <window_info id="Maven Projects" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
-      <window_info id="Android Monitor" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.31860465" sideWeight="0.49356914" order="9" side_tool="false" content_ui="tabs" />
+      <window_info id="Android Monitor" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" weight="0.14302325" sideWeight="0.49356914" order="9" side_tool="false" content_ui="tabs" />
       <window_info id="Preview" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.33" sideWeight="0.5" order="10" side_tool="false" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" weight="0.32906976" sideWeight="0.5" order="2" side_tool="false" content_ui="tabs" />
@@ -2145,7 +2148,7 @@
         <state vertical-scroll-proportion="0.0">
           <caret line="86" column="43" selection-start-line="86" selection-start-column="43" selection-end-line="86" selection-end-column="43" />
           <folding>
-            <element signature="e#0#13464#0" expanded="true" />
+            <element signature="e#0#13407#0" expanded="true" />
             <element signature="imports" expanded="true" />
           </folding>
         </state>
@@ -2397,16 +2400,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/StreamPreferences.java">
-      <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.0">
-          <caret line="131" column="35" selection-start-line="131" selection-start-column="35" selection-end-line="131" selection-end-column="35" />
-          <folding>
-            <element signature="e#3036#3037#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$USER_HOME$/AppData/Local/Android/sdk/sources/android-22/android/graphics/Rect.java">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
@@ -2493,7 +2486,7 @@
     <entry file="file://$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/ImageSettingsActivity.java">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="39" column="45" selection-start-line="39" selection-start-column="21" selection-end-line="39" selection-end-column="45" />
+          <caret line="36" column="45" selection-start-line="36" selection-start-column="21" selection-end-line="36" selection-end-column="45" />
           <folding />
         </state>
       </provider>
@@ -2501,9 +2494,9 @@
     <entry file="file://$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/StreamCameraActivity.java">
       <provider selected="true" editor-type-id="text-editor">
         <state vertical-scroll-proportion="0.0">
-          <caret line="176" column="30" selection-start-line="176" selection-start-column="30" selection-end-line="176" selection-end-column="30" />
+          <caret line="175" column="30" selection-start-line="175" selection-start-column="30" selection-end-line="175" selection-end-column="30" />
           <folding>
-            <element signature="e#0#13464#0" expanded="true" />
+            <element signature="e#0#13407#0" expanded="true" />
             <element signature="imports" expanded="true" />
           </folding>
         </state>
@@ -2511,12 +2504,25 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/CameraStreamer.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.6907776">
-          <caret line="247" column="0" selection-start-line="247" selection-start-column="0" selection-end-line="247" selection-end-column="0" />
+        <state vertical-scroll-proportion="0.0">
+          <caret line="244" column="0" selection-start-line="244" selection-start-column="0" selection-end-line="244" selection-end-column="0" />
           <folding>
             <element signature="imports" expanded="true" />
-            <element signature="e#15586#15587#0" expanded="true" />
-            <element signature="e#15616#15617#0" expanded="true" />
+            <element signature="e#15484#15485#0" expanded="true" />
+            <element signature="e#15514#15515#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/app/src/main/java/com/bwarg/slave/StreamPreferences.java">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.9375">
+          <caret line="137" column="0" selection-start-line="137" selection-start-column="0" selection-end-line="137" selection-end-column="0" />
+          <folding>
+            <element signature="e#1435#1436#0" expanded="true" />
+            <element signature="e#1473#1474#0" expanded="true" />
+            <element signature="e#2802#2803#0" expanded="true" />
+            <element signature="e#2838#2839#0" expanded="true" />
           </folding>
         </state>
       </provider>
