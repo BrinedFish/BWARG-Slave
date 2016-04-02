@@ -25,7 +25,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.hardware.Camera;
-import android.hardware.camera2.CameraCharacteristics;
 import android.net.nsd.NsdManager;
 import android.net.nsd.NsdServiceInfo;
 import android.net.wifi.WifiInfo;
@@ -37,6 +36,7 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
@@ -56,6 +56,7 @@ public final class StreamCameraActivity extends Activity
     private boolean mPreviewDisplayCreated = false;
     private SurfaceHolder mPreviewDisplay = null;
     private CameraStreamer mCameraStreamer = null;
+    private ImageButton exposure_lock_button;
 
     private String mIpAddress = "";
 
@@ -98,6 +99,8 @@ public final class StreamCameraActivity extends Activity
         SharedPreferences sharedPrefs = getSharedPreferences("SAVED_VALUES", MODE_PRIVATE);
         streamPrefs = loadPreferences(sharedPrefs);
         updatePrefCacheAndUi(streamPrefs);
+
+        exposure_lock_button = (ImageButton) findViewById(R.id.auto_exposure_lock_button);
 
         final PowerManager powerManager =
                 (PowerManager) getSystemService(POWER_SERVICE);
@@ -178,10 +181,8 @@ public final class StreamCameraActivity extends Activity
         } // if
     } // tryStartCameraStreamer()
 
-    private void ensureCameraStreamerStopped()
-    {
-        if (mCameraStreamer != null)
-        {
+    private void ensureCameraStreamerStopped() {
+        if (mCameraStreamer != null) {
             mCameraStreamer.stop();
             mCameraStreamer = null;
         } // if
@@ -197,10 +198,21 @@ public final class StreamCameraActivity extends Activity
         startActivityForResult(intent, REQUEST_SETTINGS);
     }
 
+    public void toggleExposureLock(View v) {
+        Camera cam = mCameraStreamer.getCamera();
+        Camera.Parameters params = cam.getParameters();
+        boolean exposureLocked = params.getAutoExposureLock();
+
+        exposure_lock_button.setImageResource(exposureLocked ? R.drawable.exposure_unlocked : R.drawable.exposure_locked);
+
+        params.setAutoExposureLock(!exposureLocked);
+        cam.setParameters(params);
+    }
+
     private final void updatePrefCacheAndUi(StreamPreferences streamPrefs)
     {
         this.streamPrefs = streamPrefs;
-        mIpAddressView.setText("http://" + mIpAddress + ":" + streamPrefs.getIp_port() + "/");
+        mIpAddressView.setText("http://" + mIpAddress + ":" + streamPrefs.getIpPort() + "/");
         if(mNsdManager!=null && mRegistrationListener!=null){
             try{
                 mNsdManager.unregisterService(mRegistrationListener);
@@ -212,6 +224,12 @@ public final class StreamCameraActivity extends Activity
             }
 
         }
+        /*Camera cam = mCameraStreamer.getCamera();
+        Camera.Parameters params = cam.getParameters();
+        boolean exposureLocked = params.getAutoExposureLock();
+        exposure_lock_button = (ImageButton) findViewById(R.id.auto_exposure_lock_button);
+        exposure_lock_button.setImageResource(exposureLocked ? R.drawable.exposure_unlocked : R.drawable.exposure_locked);*/
+
         if(LOCK_PHYS_KEYS){
             lockPhysKeys();
         }else{
@@ -267,6 +285,7 @@ public final class StreamCameraActivity extends Activity
 
                     updatePrefCacheAndUi(streamPrefs);
                     tryStartCameraStreamer();
+
                 }
                 break;
         }
@@ -291,7 +310,7 @@ public final class StreamCameraActivity extends Activity
         NsdServiceInfo serviceInfo = new NsdServiceInfo();
         serviceInfo.setServiceName(SERVICE_NAME + streamPrefs.getName());
         serviceInfo.setServiceType(SERVICE_TYPE);
-        serviceInfo.setPort(streamPrefs.getIp_port());
+        serviceInfo.setPort(streamPrefs.getIpPort());
         try {
             serviceInfo.setHost(InetAddress.getByName(getIP()));
         } catch (UnknownHostException e) {
@@ -348,7 +367,8 @@ public final class StreamCameraActivity extends Activity
                 (ipAddress >> 24 & 0xff));
 
     }
-    private StreamPreferences loadPreferences(SharedPreferences prefs){
+
+    private StreamPreferences loadPreferences(SharedPreferences prefs) {
         Gson gson = new Gson();
         StreamPreferences temp = gson.fromJson(prefs.getString("stream_prefs", StreamPreferences.defaultGsonString()), StreamPreferences.class);
         LOCK_PHYS_KEYS = prefs.getBoolean("lock_phys_keys", false);

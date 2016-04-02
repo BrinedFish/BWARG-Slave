@@ -108,7 +108,7 @@ public class SlaveSettingsActivity extends ActionBarActivity {
                         }
                         s = port_input.getText().toString();
                         if (!"".equals(s)) {
-                            streamPrefs.setIp_port(Integer.parseInt(s));
+                            streamPrefs.setIpPort(Integer.parseInt(s));
                         }
 
                         Intent intent = new Intent();
@@ -131,7 +131,7 @@ public class SlaveSettingsActivity extends ActionBarActivity {
         }
         flash_switch.setChecked(prefs.useFlashLight());
         name_input.setText(prefs.getName());
-        port_input.setText(String.valueOf(prefs.getIp_port()), TextView.BufferType.NORMAL);
+        port_input.setText(String.valueOf(prefs.getIpPort()), TextView.BufferType.NORMAL);
         lock_checkbox.setChecked(StreamCameraActivity.LOCK_PHYS_KEYS);
     }
 

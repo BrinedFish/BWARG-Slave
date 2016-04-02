@@ -36,6 +36,7 @@
             android:layout_gravity="bottom|top"
             android:textColor="@color/primary_text_material_dark"
             android:background="@android:color/black" />
+
     </RelativeLayout>
 
     <ImageButton
@@ -48,5 +49,20 @@
         android:layout_gravity="center_horizontal"
         android:scaleType="centerCrop"
         android:background="@null" />
+
+    <ImageButton
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:id="@+id/auto_exposure_lock_button"
+        android:onClick="toggleExposureLock"
+        android:src="@drawable/exposure_locked"
+        android:layout_gravity="center_horizontal"
+        android:scaleType="centerCrop"
+        android:background="@null"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginLeft="32dp" />
+
 </FrameLayout>
 
