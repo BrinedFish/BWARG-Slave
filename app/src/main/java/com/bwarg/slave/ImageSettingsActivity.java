@@ -2,6 +2,7 @@ package com.bwarg.slave;
 
 import android.content.Intent;
 import android.hardware.Camera;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
@@ -184,19 +185,31 @@ public class ImageSettingsActivity  extends ActionBarActivity {
         auto_white_lock_checkBox.setEnabled(params.isAutoWhiteBalanceLockSupported());
         if(auto_white_lock_checkBox.isEnabled()) {
             auto_white_lock_checkBox.setChecked(prefs.getAutoWhiteBalanceLock());
+        }else{
+            prefs.setAutoWhiteBalanceLock(false);
         }
         auto_exposure_lock_checkBoc.setEnabled(params.isAutoExposureLockSupported());
+        if((Build.MANUFACTURER+Build.MODEL).equals("samsungGT-I9300")){
+            auto_exposure_lock_checkBoc.setEnabled(false);
+            Log.i(TAG, "Desactivated auto_exposure_lock on Galaxy S3, use main screen button or network command instead.");
+        }
         if(auto_exposure_lock_checkBoc.isEnabled()) {
             auto_exposure_lock_checkBoc.setChecked(prefs.getAutoExposureLock());
+        }else{
+            prefs.setAutoExposureLock(false);
         }
         stabilize_image_checkBox.setEnabled(params.isVideoStabilizationSupported());
         if(stabilize_image_checkBox.isEnabled()) {
             stabilize_image_checkBox.setChecked(prefs.getImageStabilization());
+        }else{
+            prefs.setImageStabilization(false);
         }
        String fastFPSModeSupported = params.get("fast-fps-mode");
         fast_fps_mode_checkBox.setEnabled(fastFPSModeSupported != null);
         if(fast_fps_mode_checkBox.isEnabled()) {
             fast_fps_mode_checkBox.setChecked(streamPrefs.getFastFpsMode() == 1);
+        }else{
+            prefs.setFastFpsMode(0);
         }
         initSpinners(prefs, params);
     }

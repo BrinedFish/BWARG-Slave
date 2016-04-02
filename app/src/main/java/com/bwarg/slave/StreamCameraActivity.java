@@ -36,6 +36,7 @@ import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
@@ -55,6 +56,7 @@ public final class StreamCameraActivity extends Activity
     private boolean mPreviewDisplayCreated = false;
     private SurfaceHolder mPreviewDisplay = null;
     private CameraStreamer mCameraStreamer = null;
+    private ImageButton exposure_lock_button;
 
     private String mIpAddress = "";
 
@@ -97,6 +99,8 @@ public final class StreamCameraActivity extends Activity
         SharedPreferences sharedPrefs = getSharedPreferences("SAVED_VALUES", MODE_PRIVATE);
         streamPrefs = loadPreferences(sharedPrefs);
         updatePrefCacheAndUi(streamPrefs);
+
+        exposure_lock_button = (ImageButton) findViewById(R.id.auto_exposure_lock_button);
 
         final PowerManager powerManager =
                 (PowerManager) getSystemService(POWER_SERVICE);
@@ -177,10 +181,8 @@ public final class StreamCameraActivity extends Activity
         } // if
     } // tryStartCameraStreamer()
 
-    private void ensureCameraStreamerStopped()
-    {
-        if (mCameraStreamer != null)
-        {
+    private void ensureCameraStreamerStopped() {
+        if (mCameraStreamer != null) {
             mCameraStreamer.stop();
             mCameraStreamer = null;
         } // if
@@ -195,10 +197,14 @@ public final class StreamCameraActivity extends Activity
 
         startActivityForResult(intent, REQUEST_SETTINGS);
     }
+
     public void toggleExposureLock(View v) {
         Camera cam = mCameraStreamer.getCamera();
         Camera.Parameters params = cam.getParameters();
         boolean exposureLocked = params.getAutoExposureLock();
+
+        exposure_lock_button.setImageResource(exposureLocked ? R.drawable.exposure_unlocked : R.drawable.exposure_locked);
+
         params.setAutoExposureLock(!exposureLocked);
         cam.setParameters(params);
     }
@@ -218,6 +224,12 @@ public final class StreamCameraActivity extends Activity
             }
 
         }
+        /*Camera cam = mCameraStreamer.getCamera();
+        Camera.Parameters params = cam.getParameters();
+        boolean exposureLocked = params.getAutoExposureLock();
+        exposure_lock_button = (ImageButton) findViewById(R.id.auto_exposure_lock_button);
+        exposure_lock_button.setImageResource(exposureLocked ? R.drawable.exposure_unlocked : R.drawable.exposure_locked);*/
+
         if(LOCK_PHYS_KEYS){
             lockPhysKeys();
         }else{
@@ -355,7 +367,8 @@ public final class StreamCameraActivity extends Activity
                 (ipAddress >> 24 & 0xff));
 
     }
-    private StreamPreferences loadPreferences(SharedPreferences prefs){
+
+    private StreamPreferences loadPreferences(SharedPreferences prefs) {
         Gson gson = new Gson();
         StreamPreferences temp = gson.fromJson(prefs.getString("stream_prefs", StreamPreferences.defaultGsonString()), StreamPreferences.class);
         LOCK_PHYS_KEYS = prefs.getBoolean("lock_phys_keys", false);
