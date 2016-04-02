@@ -196,6 +196,13 @@ public final class StreamCameraActivity extends Activity
 
         startActivityForResult(intent, REQUEST_SETTINGS);
     }
+    public void toggleExposureLock(View v) {
+        Camera cam = mCameraStreamer.getCamera();
+        Camera.Parameters params = cam.getParameters();
+        boolean exposureLocked = params.getAutoExposureLock();
+        params.setAutoExposureLock(!exposureLocked);
+        cam.setParameters(params);
+    }
 
     private final void updatePrefCacheAndUi(StreamPreferences streamPrefs)
     {
@@ -267,6 +274,7 @@ public final class StreamCameraActivity extends Activity
 
                     updatePrefCacheAndUi(streamPrefs);
                     tryStartCameraStreamer();
+
                 }
                 break;
         }
