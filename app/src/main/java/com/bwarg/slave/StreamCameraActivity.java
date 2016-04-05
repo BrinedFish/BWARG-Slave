@@ -40,8 +40,13 @@ import org.apache.http.conn.util.InetAddressUtils;
 
 import eu.hgross.blaubot.android.BlaubotAndroid;
 import eu.hgross.blaubot.android.BlaubotAndroidFactory;
+import eu.hgross.blaubot.core.BlaubotDevice;
+import eu.hgross.blaubot.core.IBlaubotAdapter;
 import eu.hgross.blaubot.core.IBlaubotDevice;
 import eu.hgross.blaubot.core.ILifecycleListener;
+import eu.hgross.blaubot.core.acceptor.discovery.IBlaubotBeacon;
+import eu.hgross.blaubot.ethernet.BlaubotBonjourBeacon;
+import eu.hgross.blaubot.ethernet.BlaubotEthernetAdapter;
 import eu.hgross.blaubot.messaging.BlaubotMessage;
 import eu.hgross.blaubot.messaging.IBlaubotChannel;
 import eu.hgross.blaubot.messaging.IBlaubotMessageListener;
@@ -108,8 +113,12 @@ public final class StreamCameraActivity extends Activity
                 (PowerManager) getSystemService(POWER_SERVICE);
         mWakeLock = powerManager.newWakeLock(PowerManager.SCREEN_DIM_WAKE_LOCK,
                 WAKE_LOCK_TAG);
+
         final UUID APP_UUID = UUID.fromString(APP_UUID_STRING);
-        blaubot = BlaubotAndroidFactory.createEthernetBlaubotWithBluetoothBeacon(APP_UUID, APP_PORT, tryGetIpV4InetAddress());
+        IBlaubotBeacon beacon = new BlaubotBonjourBeacon(tryGetIpV4InetAddress(), APP_PORT);
+        IBlaubotAdapter adapter = new BlaubotEthernetAdapter(new BlaubotDevice(),APP_PORT+1,tryGetIpV4InetAddress());
+        //blaubot = BlaubotAndroidFactory.createBlaubot(APP_UUID_STRING,adapter, beacon);
+        blaubot = BlaubotAndroidFactory.createBlaubot(APP_UUID, new BlaubotDevice(), adapter, beacon);
         blaubot.startBlaubot();
         blaubot.registerReceivers(this);
         blaubot.setContext(this);
@@ -122,34 +131,62 @@ public final class StreamCameraActivity extends Activity
                 // deserialize
                 String msg = new String(message.getPayload());
                 //Structure of messages : HEADER_[fromID]XXX_[toID]XXX_DATA
-                String header = msg.substring(0,2);
-                int fromIDIndex = msg.indexOf("_[fromID]")+9;
-                int toIDIndex = msg.indexOf("_[toID]")+7;
-                int dataIndex = msg.indexOf("_[data]")+7;
+                Log.d(TAG_BLAUBOT, "Received message : \"" + msg + "\"");
 
-                String fromID = msg.substring(fromIDIndex, toIDIndex-7);
-                String toID = msg.substring(toIDIndex, dataIndex-7);
-                String data = msg.substring(dataIndex);
+                if(msg.contains("_[fromID]") && msg.contains("_[toID]")&&msg.contains("_[data]")) {
+                    String header = msg.substring(0,3);
+                    int fromIDIndex = msg.indexOf("_[fromID]")+9;
+                    int toIDIndex = msg.indexOf("_[toID]")+7;
+                    int dataIndex = msg.indexOf("_[data]")+7;
 
-                switch(header){
-                    case "SSP" : //manage complete settings rewrite here
-                        if(toID.equals(blaubot.getOwnDevice().getUniqueDeviceID())) {
-                            SlaveStreamPreferences prefs = SlaveStreamPreferences.fromGson(data);
-                            updatePrefCacheAndUi(prefs);
-                            tryStartCameraStreamer();
-                        }
-                        break;
-                    case "AEL" :
-                        if(toID.equals(blaubot.getOwnDevice().getUniqueDeviceID())) {
-                            boolean lock = Boolean.parseBoolean(msg.substring(2));
-                            Camera.Parameters params = mCameraStreamer.getCamera().getParameters();
-                            params.setAutoExposureLock(lock);
-                            mCameraStreamer.getCamera().setParameters(params);
-                        }
-                        break;
-                    default : break;
+                    String fromID = msg.substring(fromIDIndex, toIDIndex-7);
+                    String toID = msg.substring(toIDIndex, dataIndex-7);
+                    String data = msg.substring(dataIndex);
+
+                    /*Log.d(TAG_BLAUBOT, "Header: \""+header+"\"");
+                    Log.d(TAG_BLAUBOT, "Received from ID: \""+fromID+"\"");
+                    Log.d(TAG_BLAUBOT, "Own ID: \""+blaubot.getOwnDevice().getUniqueDeviceID()+"\"");
+                    Log.d(TAG_BLAUBOT, "To ID: \""+toID+"\"");
+                    Log.d(TAG_BLAUBOT, "With data \""+data+"\"");*/
+
+
+                    switch(header){
+                        case "SSP" : //manage complete settings rewrite here
+                            if(!fromID.equals(blaubot.getOwnDevice().getUniqueDeviceID()) && (toID.equals(blaubot.getOwnDevice().getUniqueDeviceID()) || toID.equals("all"))) {
+                               final  SlaveStreamPreferences prefs = SlaveStreamPreferences.fromGson(data);
+                                StreamCameraActivity.this.runOnUiThread(new Runnable() {
+                                    public void run() {
+                                        updatePrefCacheAndUi(prefs);
+                                        //tryStartCameraStreamer();
+                                        while(mCameraStreamer == null){}
+
+                                        mCameraStreamer.stop();
+                                        tryStartCameraStreamer();
+                                        Log.d(TAG_BLAUBOT + "_SSP", "Applied settings");
+                                    }
+                                });
+                            }
+                            break;
+                        case "AEL" :
+                            if(!fromID.equals(blaubot.getOwnDevice().getUniqueDeviceID()) && (toID.equals(blaubot.getOwnDevice().getUniqueDeviceID()) || toID.equals("all"))) {
+                                final boolean lock = Boolean.parseBoolean(data);
+                                StreamCameraActivity.this.runOnUiThread(new Runnable() {
+                                    public void run() {
+                                        while(mCameraStreamer == null || mCameraStreamer.getCamera() == null){}
+                                        Camera cam = mCameraStreamer.getCamera();
+                                        Camera.Parameters params = cam.getParameters();
+                                        toggleExposureLock(cam,params,lock);
+                                        Log.d(TAG_BLAUBOT + "_AEL", "Applied settings");
+                                    }
+                                });
+                            }
+                            break;
+                        default : break;
+                    }
+                }else{
+                    Log.d(TAG_BLAUBOT, "Not a valid message.");
                 }
-                Log.i(TAG_BLAUBOT, "Received from channel : " + msg);
+
             }
         });
         blaubot.addLifecycleListener(new ILifecycleListener() {
@@ -167,7 +204,10 @@ public final class StreamCameraActivity extends Activity
             @Override
             public void onDeviceJoined(IBlaubotDevice blaubotDevice) {
                 // ANOTHER device connected to the network THIS device is on
-                channel.publish(("SSP" + streamPrefs.toGson()).getBytes());
+                channel.publish(("SSP" +
+                        "_[fromID]" + blaubot.getOwnDevice().getUniqueDeviceID() +
+                        "_[toID]" + blaubotDevice.getUniqueDeviceID() +
+                        "_[data]" + streamPrefs.toGson()).getBytes());
             }
 
             @Override
@@ -175,7 +215,10 @@ public final class StreamCameraActivity extends Activity
                 // THIS device connected to a network
                 // you can now subscribe to channels and use them:
                 channel.subscribe();
-                channel.publish(("SSP"+streamPrefs.toGson()).getBytes());
+                channel.publish(("SSP" +
+                        "_[fromID]" + blaubot.getOwnDevice().getUniqueDeviceID() +
+                        "_[toID]" + "all" +
+                        "_[data]" + streamPrefs.toGson()).getBytes());
                 // onDeviceJoined(...) calls will follow for each OTHER device that was already connected
             }
 
@@ -231,8 +274,7 @@ public final class StreamCameraActivity extends Activity
     } // surfaceChanged(SurfaceHolder, int, int, int)
 
     @Override
-    public void surfaceCreated(final SurfaceHolder holder)
-    {
+    public void surfaceCreated(final SurfaceHolder holder) {
         mPreviewDisplayCreated = true;
         tryStartCameraStreamer();
     } // surfaceCreated(SurfaceHolder)
@@ -272,11 +314,11 @@ public final class StreamCameraActivity extends Activity
     public void toggleExposureLock(View v) {
         Camera cam = mCameraStreamer.getCamera();
         Camera.Parameters params = cam.getParameters();
-        boolean exposureLocked = params.getAutoExposureLock();
-
-        exposure_lock_button.setImageResource(exposureLocked ? R.drawable.exposure_unlocked : R.drawable.exposure_locked);
-
-        params.setAutoExposureLock(!exposureLocked);
+        toggleExposureLock(cam,params,!params.getAutoExposureLock());
+    }
+    public void toggleExposureLock(Camera cam, Camera.Parameters params, boolean exposureLocked){
+        exposure_lock_button.setImageResource(exposureLocked ? R.drawable.exposure_locked :R.drawable.exposure_unlocked );
+        params.setAutoExposureLock(exposureLocked);
         cam.setParameters(params);
     }
 
