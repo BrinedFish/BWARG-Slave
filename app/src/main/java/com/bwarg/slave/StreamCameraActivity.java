@@ -78,6 +78,7 @@ public final class StreamCameraActivity extends Activity
     private static final String APP_UUID_STRING = "52260110-f8f0-11e5-a837-0800200c9a66";
     private static final int APP_PORT = 5606;
     private BlaubotAndroid blaubot;
+    private IBlaubotChannel channel;
 
     //Lock physical keys attributes
     public static boolean LOCK_PHYS_KEYS = false;
@@ -120,10 +121,11 @@ public final class StreamCameraActivity extends Activity
         //blaubot = BlaubotAndroidFactory.createBlaubot(APP_UUID_STRING,adapter, beacon);
         blaubot = BlaubotAndroidFactory.createBlaubot(APP_UUID, new BlaubotDevice(), adapter, beacon);
         blaubot.startBlaubot();
+        Log.i(TAG_BLAUBOT, "Device ID : " + blaubot.getOwnDevice().getUniqueDeviceID());
         blaubot.registerReceivers(this);
         blaubot.setContext(this);
         //blaubot.onResume(this);
-        final IBlaubotChannel channel = blaubot.createChannel((short)1);
+        channel = blaubot.createChannel((short)1);
         channel.subscribe(new IBlaubotMessageListener() {
             @Override
             public void onMessage(BlaubotMessage message) {
@@ -204,21 +206,16 @@ public final class StreamCameraActivity extends Activity
             @Override
             public void onDeviceJoined(IBlaubotDevice blaubotDevice) {
                 // ANOTHER device connected to the network THIS device is on
-                channel.publish(("SSP" +
-                        "_[fromID]" + blaubot.getOwnDevice().getUniqueDeviceID() +
-                        "_[toID]" + blaubotDevice.getUniqueDeviceID() +
-                        "_[data]" + streamPrefs.toGson()).getBytes());
+                send_SSP_to(blaubotDevice.getUniqueDeviceID());
             }
 
             @Override
             public void onConnected() {
                 // THIS device connected to a network
                 // you can now subscribe to channels and use them:
-                channel.subscribe();
-                channel.publish(("SSP" +
-                        "_[fromID]" + blaubot.getOwnDevice().getUniqueDeviceID() +
-                        "_[toID]" + "all" +
-                        "_[data]" + streamPrefs.toGson()).getBytes());
+                Log.d(TAG_BLAUBOT, "Connected");
+                //channel.subscribe();
+                send_SSP_to_all();
                 // onDeviceJoined(...) calls will follow for each OTHER device that was already connected
             }
 
@@ -314,7 +311,7 @@ public final class StreamCameraActivity extends Activity
     public void toggleExposureLock(View v) {
         Camera cam = mCameraStreamer.getCamera();
         Camera.Parameters params = cam.getParameters();
-        toggleExposureLock(cam,params,!params.getAutoExposureLock());
+        toggleExposureLock(cam, params, !params.getAutoExposureLock());
     }
     public void toggleExposureLock(Camera cam, Camera.Parameters params, boolean exposureLocked){
         exposure_lock_button.setImageResource(exposureLocked ? R.drawable.exposure_locked :R.drawable.exposure_unlocked );
@@ -463,5 +460,14 @@ public final class StreamCameraActivity extends Activity
         } // catch
         return null;
     } // tryGetIpV4Address()
+    public void send_SSP_to_all(){
+        send_SSP_to("all");
+    }
+    public void send_SSP_to(String deviceUniqueID){
+        channel.publish(("SSP" +
+                "_[fromID]" + blaubot.getOwnDevice().getUniqueDeviceID() +
+                "_[toID]" + deviceUniqueID +
+                "_[data]" + streamPrefs.toGson()).getBytes());
+    }
 } // class StreamCameraActivity
 
